@@ -493,7 +493,7 @@ const saveA = () => { try { localStorage.setItem('wsu-auto-v1', JSON.stringify(a
 const CAMPUS_ANCHOR={W:[36.33755,127.44537],E:[36.33516,127.45319]};
 const REFERENCE_POS={W16:[36.337811,127.445900],'06':[36.338500,127.432470]};
 // 학교 캠퍼스맵 건물 목록과 대조한 OpenStreetMap 건물 윤곽 내부 대표점.
-const BUILDING_OUTLINE_POS = {
+const BUILDING_MAP_POS = {
   W1: [36.338101, 127.446415], // OSM way 74275068
   W2: [36.339569, 127.447339], // OSM way 108115439
   W3: [36.339620, 127.446499], // OSM way 196104778
@@ -518,6 +518,11 @@ const BUILDING_OUTLINE_POS = {
   E3: [36.334484, 127.452789], // OSM way 483597267
   E4: [36.334898, 127.452795], // OSM way 483597268
   E5: [36.336768, 127.452141], // OSM way 483597270
+  // 학교 건물 목록과 대조한 카카오맵 장소 좌표
+  E7: [36.336112, 127.453857], // https://place.map.kakao.com/17562142
+  E8: [36.33649, 127.454029], // https://place.map.kakao.com/17567912
+  E9: [36.337306, 127.453788], // https://place.map.kakao.com/427044031
+  E11: [36.337054, 127.453537], // https://place.map.kakao.com/1225110991
 };
 const GENERAL_BOUNDS=[36.315,127.410,36.357,127.480];
 const PIN_SOURCE_KEY='wsu-pin-source-v15',MIGRATION_KEY='ieum-v15-clean-v1';
@@ -534,15 +539,15 @@ function campusPlausible(b,p){
  return d<=1050 && !(dOther+170<d && dOther<550);
 }
 function positionOf(b){
- if(b.code==='W16'&&pinSources.W16==='reference')return BUILDING_OUTLINE_POS.W16;
+ if(b.code==='W16'&&pinSources.W16==='reference')return BUILDING_MAP_POS.W16;
  if(pins[b.code]&&campusPlausible(b,pins[b.code]))return pins[b.code];
- if(BUILDING_OUTLINE_POS[b.code])return BUILDING_OUTLINE_POS[b.code];
+ if(BUILDING_MAP_POS[b.code])return BUILDING_MAP_POS[b.code];
  if(auto[b.code]&&campusPlausible(b,auto[b.code]))return auto[b.code];
  return REFERENCE_POS[b.code]||null;
 }
 function positionKind(b){
  if(pins[b.code])return campusPlausible(b,pins[b.code])?(pinSources[b.code]==='reference'?'reference':'admin'):'invalid';
- if(BUILDING_OUTLINE_POS[b.code])return 'reference';
+ if(BUILDING_MAP_POS[b.code])return 'reference';
  if(auto[b.code])return campusPlausible(b,auto[b.code])?'osm':'invalid';
  return REFERENCE_POS[b.code]?'reference':'missing';
 }
