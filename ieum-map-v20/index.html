@@ -1,0 +1,1506 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>이음 | 우송대 캠퍼스 지도</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --bg:#fff; --fg:#17201c; --muted:#66736d; --line:#e4e9e6; --soft:#f3f6f4;
+    --W:#1f7a4d; --Wsoft:#e3f2ea;   /* 서캠 */
+    --E:#2463c9; --Esoft:#e4ecfa;   /* 동캠 */
+    --X:#c26a12; --Xsoft:#fbeedd;   /* 캠퍼스 밖 */
+    --sel:#d93a2f; --me:#2b7cff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--fg);font-size:16px}
+  #map{position:fixed;inset:0}
+  button{font:inherit;cursor:pointer;color:inherit}
+  [hidden]{display:none!important}
+
+  /* 이음 지도 UI */
+  .brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;padding:8px 12px;background:rgba(255,255,255,.97);border-radius:13px;box-shadow:0 2px 10px #0002;font-weight:800;color:#174d87}
+  .brand small{font-size:11px;color:#657888;font-weight:500}
+  .brand button{border:0;background:#eaf2fc;color:#174d87;border-radius:9px;padding:7px 10px;font-size:12px;font-weight:700}
+  .tools{display:flex;gap:8px;margin-top:9px}
+  .tools button{flex:1;background:white;border:0;border-radius:12px;box-shadow:0 2px 8px #0002;padding:10px 8px;font-weight:700;font-size:13px;color:#174d87}
+  .toolpanel{margin-top:8px;background:white;border-radius:14px;padding:13px;box-shadow:0 3px 12px #0003;font-size:14px}
+  .toolpanel textarea,.toolpanel select{width:100%;border:1px solid #d9e3ed;border-radius:8px;padding:9px;font:inherit;margin:7px 0}
+  .toolpanel button{background:#2463c9;color:white;border:0;border-radius:9px;padding:9px 12px;font-weight:700}
+  /* 상단 검색 */
+  .top{position:fixed;z-index:1001;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px))}
+  .search{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:14px;box-shadow:0 3px 14px rgba(0,0,0,.18);padding:4px 6px 4px 14px;height:52px}
+  .search .ic{font-size:18px;color:var(--muted)}
+  .search input{flex:1;min-width:0;border:0;outline:0;font-size:17px;background:transparent;color:var(--fg)}
+  .gps{font-size:12px;font-weight:600;padding:5px 9px;border-radius:99px;background:var(--soft);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .gps.ok{background:#e4ecfa;color:var(--me)}
+  .tabs{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:2px}
+  .tabs button{border:0;border-radius:99px;padding:8px 14px;background:var(--bg);box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:14px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .tabs .dot{width:9px;height:9px;border-radius:50%}
+  .tabs button.on{background:var(--fg);color:#fff}
+
+  /* 검색 결과 */
+  .results{margin-top:10px;background:var(--bg);border-radius:14px;box-shadow:0 3px 14px rgba(0,0,0,.18);max-height:55vh;overflow-y:auto}
+  .grp{position:sticky;top:0;background:var(--soft);font-size:13px;font-weight:700;padding:8px 16px;color:var(--muted)}
+  .row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .code{min-width:48px;text-align:center;font-size:13px;font-weight:800;padding:6px 4px;border-radius:8px}
+  .c-W{background:var(--Wsoft);color:var(--W)} .c-E{background:var(--Esoft);color:var(--E)} .c-X{background:var(--Xsoft);color:var(--X)}
+  .row .nm{flex:1;min-width:0;font-size:16px;font-weight:600}
+  .row .mt{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+  mark{background:#fff3c4;color:var(--fg);font-size:13px;font-weight:600;padding:2px 6px;border-radius:5px}
+  .items{margin:14px 0 0;max-height:38vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px}
+  .fl+.fl{border-top:1px solid var(--line)}
+  .fh{position:sticky;top:0;background:var(--soft);font-size:13px;font-weight:800;padding:7px 12px;color:var(--muted)}
+  .it{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;font-size:15px}
+  .it+.it{border-top:1px dashed var(--line)}
+  .itn{min-width:0}
+  .itn em{font-style:normal;font-size:11px;color:var(--E);background:var(--Esoft);padding:1px 5px;border-radius:4px}
+  .itr{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:13px;font-variant-numeric:tabular-nums}
+  .itr b{font-size:14px;background:#fff3c4;padding:2px 7px;border-radius:5px}
+  .itr a{color:var(--E);text-decoration:none}
+  .itr .del{border:0;background:none;color:var(--sel);font-size:12px}
+  .add{padding:10px 12px;border-top:1px solid var(--line)}
+  .add summary{font-size:14px;font-weight:600;color:var(--E);cursor:pointer}
+  .addf{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .addf input{flex:1 1 40%;min-width:0;font-size:16px;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+  .addf button{border:0;background:var(--fg);color:#fff;border-radius:8px;padding:8px 14px;font-weight:600}
+  .sheet{max-height:85vh;overflow-y:auto}
+  .row .rt{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .row .rt.no{color:#b0b8b4}
+  .empty{padding:20px 16px;color:var(--muted);font-size:15px}
+
+  /* 우측 버튼 */
+  .fab{position:fixed;z-index:1000;right:12px;bottom:calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+  .fab button{border:0;border-radius:16px;width:56px;height:56px;background:var(--bg);box-shadow:0 3px 12px rgba(0,0,0,.25);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  .fab .i{font-size:20px;line-height:1}
+  .fab .l{font-size:10px;font-weight:700;color:var(--muted)}
+  .fab button.on{background:var(--me)} .fab button.on .l{color:#fff}
+
+  /* 첫 사용 안내 */
+  .hint{position:fixed;z-index:1000;left:12px;right:80px;bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--bg);border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.2);padding:14px 16px}
+  .hint b{font-size:16px}
+  .hint ol{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:1.6;color:var(--muted)}
+  .hint .x{top:6px}
+
+  /* 하단 시트 */
+  .sheet{position:fixed;z-index:1002;left:0;right:0;bottom:0;background:var(--bg);border-radius:20px 20px 0 0;box-shadow:0 -4px 20px rgba(0,0,0,.2);padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+  .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+  .sh{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .sh .code{font-size:15px;min-width:56px;padding:8px 6px}
+  .sh h3{margin:0;font-size:20px;line-height:1.25}
+  .sub{color:var(--muted);font-size:14px;margin:4px 0 14px}
+  .sub b{color:var(--fg)}
+  .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .acts > *{text-align:center;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:14px 8px;font-size:15px;font-weight:600;text-decoration:none;color:var(--fg)}
+  .acts .pri{grid-column:1/-1;background:var(--sel);border-color:var(--sel);color:#fff;font-size:17px}
+  .acts .pri.reg{background:var(--fg);border-color:var(--fg)}
+  .x{position:absolute;right:10px;top:8px;border:0;background:none;font-size:26px;color:var(--muted);width:40px;height:40px}
+
+  /* 길 안내 바 */
+  .guide{position:fixed;z-index:1001;left:12px;right:80px;bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--fg);color:#fff;border-radius:18px;padding:14px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(0,0,0,.35)}
+  .arrow{flex:none;width:58px;height:58px;border-radius:50%;background:var(--sel);display:grid;place-items:center;font-size:32px;font-weight:700;transition:transform .25s}
+  .gi{flex:1;min-width:0}
+  .gi .to{font-size:13px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gi .d{font-size:28px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+  .gi .m{font-size:13px;opacity:.85}
+  .guide .stop{flex:none;border:0;background:rgba(255,255,255,.15);color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:600}
+  .guide.done .arrow{background:var(--W)}
+  .guide{flex-wrap:wrap}
+  .gb{display:flex;flex-direction:column;gap:6px}
+  .gfoot{flex-basis:100%;font-size:12px;opacity:.8;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .gfoot:empty{display:none}
+  .gfoot a{color:#fff;background:rgba(255,255,255,.15);padding:4px 9px;border-radius:7px;text-decoration:none;font-weight:600}
+  .gi .nx{font-size:15px;font-weight:700;margin-top:2px}
+
+  /* 지도에 시설 표시 */
+  .cats{display:flex;gap:6px;margin-top:8px;overflow-x:auto;padding-bottom:2px}
+  .cats button{border:0;border-radius:99px;padding:6px 11px;background:var(--bg);box-shadow:0 2px 8px rgba(0,0,0,.15);font-size:13px;font-weight:600;white-space:nowrap}
+  .cats button.on{background:var(--sel);color:#fff}
+  .fac{position:absolute;left:0;top:0;transform:translate(-50%,6px);display:flex;gap:3px;pointer-events:auto}
+  .fac span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid var(--sel);font-size:16px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+  .fac.osm{transform:translate(-50%,-50%)}
+  .fac.osm span{width:26px;height:26px;font-size:14px;border-color:#8a948f}
+  .sel-b{width:100%;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;margin:6px 0 10px;background:var(--bg);color:var(--fg)}
+  .pick{padding:12px}
+  .pick p{margin:0 0 4px;font-size:14px;color:var(--muted)}
+
+  /* 건물 소개 · 층별 안내 */
+  .desc{font-size:14px;line-height:1.5;margin:-6px 0 12px}
+  .desc small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+  .fh .src{font-weight:600;font-size:11px;margin-left:6px;opacity:.85}
+  .fg{display:flex;gap:10px;padding:8px 12px;font-size:14.5px;line-height:1.45}
+  .fg+.fg{border-top:1px dashed var(--line)}
+  .fg b{flex:none;min-width:52px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;padding-top:1px}
+  .memo{padding:8px 12px;font-size:14px;line-height:1.5}
+  .memo+.memo{border-top:1px dashed var(--line)}
+
+  /* 방향 안내 (나침반) */
+  .compass{position:fixed;z-index:1000;left:50%;top:50%;transform:translate(-50%,-58%);width:min(300px,84vw);background:rgba(23,32,28,.88);color:#fff;border-radius:28px;padding:20px 16px 18px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4);backdrop-filter:blur(6px)}
+  .dial{position:relative;width:min(210px,58vw);aspect-ratio:1;margin:0 auto;border-radius:50%;border:3px solid rgba(255,255,255,.25);background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,0) 70%)}
+  .dial::before{content:"";position:absolute;left:50%;top:-9px;transform:translateX(-50%);border:8px solid transparent;border-bottom:10px solid #fff;border-top:0}
+  #needle{position:absolute;inset:0;width:100%;height:100%;transition:transform .25s ease-out}
+  .cd2{position:absolute;inset:0;display:grid;place-content:center;pointer-events:none}
+  .cdist{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.6);margin-top:46px}
+  .cto{font-size:12px;opacity:.8}
+  .cturn{font-size:22px;font-weight:800;margin-top:14px}
+  .cturn.ok{color:#7be0a6}
+  .csub{font-size:13px;opacity:.75;margin-top:4px}
+  .cbtn{margin-top:12px;border:0;border-radius:10px;padding:10px 16px;background:#fff;color:#17201c;font-weight:700}
+  .compass.done .cturn{color:#7be0a6}
+
+  /* 알림 띠 */
+  .banner{position:fixed;z-index:1003;left:12px;right:12px;top:calc(166px + env(safe-area-inset-top,0px));background:var(--fg);color:#fff;border-radius:12px;padding:12px 14px;font-size:15px;display:flex;gap:10px;align-items:center;box-shadow:0 3px 12px rgba(0,0,0,.3)}
+  .banner span{flex:1}
+  .banner button{border:0;background:rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 12px;font-weight:600}
+
+  /* 지도 위 마커 */
+  .me{width:18px;height:18px;border-radius:50%;background:var(--me);border:3px solid #fff;box-shadow:0 0 0 3px rgba(43,124,255,.35)}
+  .pin{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;pointer-events:auto}
+  .pin .lb{display:flex;align-items:center;gap:5px;background:#fff;border-radius:8px;padding:3px 7px 3px 3px;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;font-size:12px;font-weight:700;color:#17201c}
+  .pin .cd{color:#fff;border-radius:5px;padding:2px 5px;font-size:11px}
+  .pin .tail{width:0;height:0;border:6px solid transparent;border-top-color:#fff;margin-top:-1px}
+  .pin.W .cd{background:var(--W)} .pin.E .cd{background:var(--E)} .pin.X .cd{background:var(--X)}
+  .pin.small .nmx{display:none} .pin.small .lb{padding:3px}
+  .pin.sel .lb{background:var(--sel);color:#fff;transform:scale(1.15)} .pin.sel .tail{border-top-color:var(--sel)}
+
+  /* 앱 표시 언어 선택 */
+  .langbar{display:flex;justify-content:flex-end;margin-top:8px}
+  .langbar select{border:1px solid var(--line);border-radius:10px;background:white;padding:8px 12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.12);max-width:180px}
+  /* 백업 창 */
+  .modal{position:fixed;z-index:1100;inset:0;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}
+  .modal .box{background:var(--bg);border-radius:16px;padding:18px;width:100%;max-width:420px}
+  .modal b{font-size:18px}
+  .modal p{font-size:14px;color:var(--muted);margin:6px 0 12px;line-height:1.5}
+  .modal textarea{width:100%;height:140px;font-size:12px;font-family:ui-monospace,monospace;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .auditbox{max-height:88vh;overflow:auto;width:min(620px,95vw)}
+  .audithead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .audithead button,.auditActions button{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:9px}
+  .auditSummary{font-weight:700;line-height:1.7;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
+  .auditActions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .auditRows{max-height:45vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .auditRow{width:100%;display:flex;justify-content:space-between;gap:8px;align-items:center;text-align:left;padding:11px;border:0;border-bottom:1px solid var(--line);background:white;color:var(--fg)}
+  .auditRow:last-child{border-bottom:0}.auditRow small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+  .auditRow .status{font-size:12px;white-space:nowrap;color:#92530e}
+  .auditRow .status.good{color:#23744d}.auditRow .status.bad{color:#ba3636}
+  .modal .acts{margin-top:12px;grid-template-columns:1fr 1fr 1fr}
+  .modal .acts .pri{grid-column:auto;font-size:15px}
+  .refmodal{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:12px}
+  .refbox{background:white;border-radius:16px;padding:14px;max-width:1000px;width:100%;max-height:92vh;overflow:auto}
+  .refbox img{display:block;width:100%;height:auto;min-width:520px}
+  .refscroll{overflow:auto;max-height:70vh;border:1px solid #ddd;border-radius:10px}
+  .refbox button{border:0;border-radius:9px;padding:10px 14px;background:#17201c;color:white}
+  .refbox p{font-size:13px;line-height:1.5;color:#59655f}
+.pin.unplaced .lb{border:2px dashed #dc851d;background:#fff6e8}
+.pin.unplaced .pending{color:#a35300;font-weight:900;font-size:13px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="top">
+  <div class="brand"><span>📍 이음 <small>우송대 캠퍼스 지도</small></span><button id="adminBtn">🔒 관리자</button></div>
+  <div class="search">
+    <span class="ic">🔍</span>
+    <input id="q" type="search" placeholder="학과·시설 검색 (간호, 학식, ATM)" autocomplete="off">
+    <span class="gps" id="gps">GPS 찾는 중</span>
+  </div>
+  <div class="tabs" id="tabs">
+    <button data-c="all">전체</button>
+    <button data-c="W"><span class="dot" style="background:var(--W)"></span>서캠</button>
+    <button data-c="E"><span class="dot" style="background:var(--E)"></span>동캠</button>
+    <button data-c="X"><span class="dot" style="background:var(--X)"></span>캠퍼스 밖</button>
+  </div>
+  <div class="cats" id="cats"></div>
+  <div class="langbar"><select id="appLanguage" aria-label="App language"><option value="ko">🇰🇷 한국어</option><option value="en">🇺🇸 English</option><option value="ja">🇯🇵 日本語</option><option value="zh">🇨🇳 中文</option></select></div>
+  <div class="results" id="results" hidden></div>
+</div>
+
+<div class="refmodal" id="refModal" hidden role="dialog" aria-label="캠퍼스 배치도">
+  <div class="refbox"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><b>우송대학교 캠퍼스 배치도</b><button id="refClose">닫기 ✕</button></div>
+  <p>제공된 배치도는 건물 번호와 상대 위치 확인용입니다. GPS 좌표가 아니므로 실제 지도에서 위치를 확인한 뒤 관리자 모드로 지정하세요.</p>
+  <div class="refscroll"><img src="campus-reference.png" alt="사용자가 제공한 우송대학교 서캠퍼스 동캠퍼스 건물 배치도"></div>
+  <p>위치 수정: 관리자 로그인 → 건물 검색 → 건물 선택 → '지도에서 위치 지정' → 실제 지도 위치 터치</p></div>
+</div>
+<div class="banner" id="banner" hidden><span id="bannerTxt"></span><button id="bannerCancel">취소</button></div>
+
+<div class="hint" id="hint" hidden>
+  <button class="x" id="hintX">×</button>
+  <b>이렇게 쓰면 돼</b>
+  <ol>
+    <li>위에서 건물·학과 검색 (예: 간호, 예비군)</li>
+    <li>결과를 누르면 <b>내 위치에서 바로 길찾기</b></li>
+    <li>지도에서 <b>건물을 직접 눌러도</b> 정보가 떠</li>
+    <li>🍚☕🏪 버튼 누르면 식당·카페·편의점 위치가 지도에 보여</li>
+  </ol>
+</div>
+
+<div class="fab">
+  <button id="btnAudit" hidden title="42개 건물 위치 점검"><span class="i">🔎</span><span class="l">위치 점검</span></button>
+  <button id="btnData" hidden><span class="i">💾</span><span class="l">백업</span></button>
+  <button id="btnReference" title="캠퍼스 배치도"><span class="i">🗺️</span><span class="l">배치도</span></button>
+  <button id="btnCampus"><span class="i">🏫</span><span class="l">학교</span></button>
+  <button id="btnFollow" class="on"><span class="i">📍</span><span class="l">내 위치</span></button>
+</div>
+
+<div class="guide" id="guide" hidden>
+  <div class="arrow" id="arrow">↑</div>
+  <div class="gi"><div class="to" id="gName"></div><div class="d" id="gDist">–</div><div class="nx" id="gNext" hidden></div><div class="m" id="gMeta"></div></div>
+  <div class="gb"><button class="stop" id="gView">지도</button><button class="stop" id="gInfoBtn">정보</button><button class="stop" id="gStop">종료</button></div>
+  <div class="gfoot" id="gFoot"></div>
+</div>
+
+<div class="compass" id="compass" hidden>
+  <div class="dial">
+    <svg viewBox="0 0 200 200" id="needle"><path d="M100 18 L132 110 L100 92 L68 110 Z" fill="#d93a2f" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>
+    <div class="cd2"><div class="cdist" id="cDist">–</div><div class="cto" id="cTo"></div></div>
+  </div>
+  <div class="cturn" id="cTurn">방향 계산 중…</div>
+  <div class="csub" id="cSub"></div>
+  <button class="cbtn" id="cCal" hidden>방향 센서 켜기</button>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="grab"></div>
+  <button class="x" id="sheetX">×</button>
+  <div class="sh"><span class="code" id="sCode"></span><h3 id="sTitle"></h3></div>
+  <div class="sub" id="sSub"></div>
+  <div class="desc" id="sDesc" hidden></div>
+  <div class="acts" id="sActs"></div>
+  <div class="items" id="sItems"></div>
+</div>
+
+<div class="modal" id="auditModal" hidden role="dialog" aria-label="건물 위치 점검">
+  <div class="box auditbox">
+    <div class="audithead"><b>🔎 건물 위치 점검 · 42곳</b><button id="auditClose">닫기 ✕</button></div>
+    <p>학교 공식 캠퍼스맵과 건물 번호를 대조했어. 아래 위치 판정은 좌표의 출처·범위 검사를 뜻하며, 현장 출입구 검증을 의미하지 않아.</p>
+    <div id="auditSummary" class="auditSummary"></div>
+    <div class="auditActions"><button id="auditRefresh">🔄 OSM 윤곽 다시 확인</button><button id="auditExport">📋 점검표 복사</button></div>
+    <div id="auditRows" class="auditRows"></div>
+    <small>좌표가 틀리면 해당 건물을 선택 → 관리자 위치 수정. 클라우드 연결 시 학생 지도에도 반영돼.</small>
+  </div>
+</div>
+<div class="modal" id="cloudModal" hidden role="dialog" aria-label="클라우드 관리자 로그인">
+ <div class="box"><b>☁️ 클라우드 관리자 로그인</b><p id="cloudStatus">Supabase 연결을 확인하는 중...</p>
+ <input id="cloudEmail" type="email" placeholder="관리자 이메일" autocomplete="username" style="width:100%;padding:12px;margin:5px 0">
+ <input id="cloudPassword" type="password" placeholder="비밀번호" autocomplete="current-password" style="width:100%;padding:12px;margin:5px 0">
+ <div class="acts"><button id="cloudLogin" class="pri reg">로그인</button><button id="cloudCancel">닫기</button></div></div>
+</div>
+<div class="modal" id="modal" hidden>
+  <div class="box">
+    <b>위치 백업 · 공유</b>
+    <p>관리자가 수정한 위치는 클라우드에 저장돼. JSON 백업도 별도로 보관할 수 있어.</p>
+    <p id="osmStat" style="margin:0 0 10px;font-weight:600;color:var(--fg)"></p>
+    <textarea id="dataTxt"></textarea>
+    <div class="acts">
+      <button id="dataExport" class="pri reg">⬇ JSON 내보내기</button><button id="dataCopy">복사</button>
+      <button id="dataLoad" class="pri reg">불러오기</button>
+      <button id="dataClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="./cloud-config.js"></script>
+<script>
+/* ===== 건물 목록 (우송대 공식 캠퍼스맵 기준) ===== */
+const B = [
+ ['W1','우송도서관','W','도서관 정문'],['W2','산학협력관','W','국제교육센터'],['W2-1','학군단','W','ROTC'],
+ ['W3','유학생기숙사','W','기숙사'],['W4','철도물류관','W','철도 물류'],['W5','보건의료과학관','W','간호 보건 의료'],
+ ['W6','교양교육관','W','교양 푸른쉼터'],['W7','우송관','W','대학본부 본관'],['W8','우송유치원','W',''],
+ ['W9','정례원','W',''],['W10','사회복지융합관','W','사회복지'],['W11','체육관(서캠)','W','체육관'],
+ ['W12','SICA','W','외식조리 조리'],['W13','우송타워','W',''],['W14','Culinary Center','W','컬리너리 조리'],
+ ['W15','식품건축관','W','식품 건축'],['W16','학생회관(SIS)','W','학생회관 식당'],['W17','미디어융합관','W','미디어'],
+ ['W18','우송예술회관','W','공연장 예술회관'],['W19','Endicott Building','W','엔디컷'],
+ ['E1','테크노디자인센터','E','디자인'],['E2','국제경영센터','E','경영'],['E3','학술정보관','E','605번 버스'],
+ ['E4','구 대학본부','E','본부'],['E5','체육관(동캠)','E','체육관'],['E6','학생회관(동캠)','E','학생회관 식당'],
+ ['E7','자립관(솔지오1)','E','기숙사 솔지오'],['E8','청솔관(솔지오2)','E','기숙사 솔지오'],
+ ['E9','단정관(솔지오3)','E','기숙사 솔지오'],['E10','독행관(솔지오4)','E','기숙사 솔지오'],
+ ['E11','크로톤빌센터','E','솔스터디홀 기숙사'],
+ ['S1','우송어학센터','X','어학'],['S2','우송IT교육센터','X','IT'],['S3','우송뷰티센터','X','뷰티'],
+ ['S4','우송애견센터','X','애견'],['S5','우송오토센터','X','자동차 오토'],
+ ['01','HRD기숙사','X','기숙사'],['03','청운1숙(남)','X','기숙사 청운'],['04','청운1숙(여)','X','기숙사 청운'],
+ ['05','대전화병원','X','병원'],['06','솔브릿지국제경영대학','X','솔브릿지 solbridge 대전역'],
+ ['JCFS','JCFS Building','X','제이씨에프에스']
+].map(([code,name,c,tags])=>({code,name,c,tags}));
+
+/* ===== 건물별 학과·시설 (우송대 공식 캠퍼스맵 + 편의시설 안내 기준) ===== */
+const D = {
+ W1:['우송도서관(서캠)','취업지원센터','한국어교육원','현금인출기(하나은행)','자동증명발급기','무인 출력기'],
+ W2:['건축공학전공','산학협력단'],
+ W3:['유학생취업팀','CU편의점(유학생기숙사)'],
+ W4:['철도건설시스템전공','철도전기시스템전공','철도소프트웨어전공','철도차량시스템학과','철도자율전공학부','소방·안전학부'],
+ W5:['철도경영학과','보건의료경영학과','응급구조학과','스포츠건강재활학과','언어치료·청각재활학과','물리치료학과','작업치료학과','간호학과','보건복지자율전공학부'],
+ W7:['AI경영학과','유아교육과','총장실','입학처','교무처','기획처','전략기획처','대외협력처','총무처','시설처','관리팀','국제교류처','자동증명발급기(서캠)'],
+ W10:['사회복지학과','현금인출기(서캠) 1'],
+ W11:['체력단련실'],
+ W12:['글로벌조리전공','Lyfe조리전공','스타리코 카페'],
+ W13:['외식조리전공','한식·조리과학전공','외식·조리경영전공','외식조리영양학과','제과제빵·조리전공','글로벌제과제빵학과','호텔관광경영전공','솔파인 레스토랑','솔파인 베이커리','현금인출기(하나은행)'],
+ W15:['AI·컴퓨터공학과','토탈펫케어학과','동물의료관리학과'],
+ W16:['학생식당(서캠)','교직원식당(서캠)','CU편의점(서캠)','구내서점(서캠)','우편 취급국','현금인출기(서캠) 2','학생복지처','학생상담센터','장애학생지원센터','사회봉사단','동아리방'],
+ W17:['미디어디자인·영상전공','게임소프트웨어전공','게임그래픽전공'],
+ W18:['우송예술회관 공연장'],
+ W19:['자유전공학부','AI·빅데이터학과','글로벌철도학과','글로벌미디어영상학과','글로벌외식·조리경영전공','글로벌호텔관광학과','외식조리자율전공학부'],
+ E1:['학생식당(동캠)','교직원식당(동캠)','CU편의점(동캠)','구내서점(동캠)','현금인출기(동캠) 1'],
+ E2:['솔카페','현금인출기(동캠) 2','자동증명발급기(동캠) 1'],
+ E3:['우송도서관(동캠)','정보화자료실','자동증명발급기(동캠) 2'],
+ E5:['우송스포츠센터'],
+ S2:['우송IT교육센터'],
+ S3:['뷰티디자인경영학과'],
+ S5:['솔카오토테크'],
+ '06':['솔브릿지경영학부','우송도서관(솔브릿지)','솔코리안 레스토랑','솔도르리 카페','솔스포렉스 수영장','솔스포렉스 헬스장']
+};
+/* ===== 호실·전화 (각 학과/부서 공식 홈페이지 기준) ===== */
+const R = {
+ W1:[['현금인출기(하나은행)','1층',''],['자동증명발급기','1층',''],['무인 출력기','1층','']],
+ W7:[['자동증명발급기(서캠)','1층 라운지 옆','']],
+ W4:[['철도차량시스템학과','B211호','042-629-6780'],['철도건설시스템전공','B211호','042-629-6710'],['철도전기시스템전공','B402호','042-629-6730'],['소방·안전학부','','042-629-6770']],
+ W5:[['간호학과','309호','042-630-9290'],['응급구조학과','302호(학과장실)','042-630-9281'],['언어치료·청각재활학과','409호','042-630-9220'],['물리치료학과','511-2호','042-630-4620'],['보건의료경영학과','','042-630-4610']],
+ W10:[['사회복지학과','302호','042-630-9830'],['예비군연대본부','401-1호','042-629-6223']],
+ W13:[['외식조리전공','','042-629-6821'],['현금인출기(하나은행)','3층','']],
+ W15:[['AI·컴퓨터공학과','','042-630-9710']],
+ W16:[['학생상담센터','304호','042-630-9645'],['복학지원센터','408호',''],['구내서점(서캠)','1층 신진서림','042-629-6127']],
+ W17:[['게임소프트웨어전공','','042-630-9270'],['게임그래픽전공','','042-630-9270']],
+ W19:[['글로벌철도학과','218호','042-630-4722'],['글로벌호텔관광학과','218호','042-630-9807']]
+};
+/* ===== 건물 소개 · 다른 이름 · 위치 메모 (a=다른 이름, s=소개, m=메모) ===== */
+const INFO = {
+ W1:{s:'서캠퍼스 정문으로 들어서면 바로 보이는 도서관. 우송대·우송정보대가 같이 써.',m:['열람실은 3·4·6층. 좌석은 모바일이나 도서관 키오스크로 예약.','도서관 앞 3층 건물 솔파크에 제과제빵 창업실습 빵집이 있어.']},
+ W2:{a:'국제교육센터',s:'학군단 건물 옆. 뒤쪽으로 유학생기숙사(W3)와 JCFS.'},
+ 'W2-1':{s:'학군단(ROTC) 건물. 산학협력관(W2) 옆.'},
+ W3:{a:'청운2숙',s:'유학생 기숙사. 산학협력관(W2) 뒤쪽.'},
+ W4:{a:'공학관',s:'철도물류대학과 소방·안전학부가 쓰는 건물.',m:['2층 구름다리로 보건의료과학관(W5)과 이어져.']},
+ W5:{a:'정보과학관, 정보관',s:'보건복지대학과 철도경영학과가 쓰는 건물.',m:['출입구가 2층에 있어.','2층 구름다리로 철도물류관(W4)과 이어져.']},
+ W6:{s:'교양 수업 강의실 건물. 앞에 푸른쉼터 공원.'},
+ W7:{s:'서캠퍼스 대학본부. 입학·교무·총무 같은 행정 업무는 대부분 여기.',m:['강의 공간과 행정 공간이 나뉘어 있어서 처음 가면 헷갈리기 쉬워.']},
+ W8:{s:'유아교육과 현장실습에 쓰는 유치원. 사회복지융합관(W10) 옆.'},
+ W9:{s:'실습실 위주 건물.'},
+ W10:{s:'사회복지학과가 쓰는 건물. 우송유치원(W8) 옆.'},
+ W11:{s:'서캠퍼스 체육관. 우송중·고등학교 건너편.'},
+ W12:{s:'글로벌조리 계열이 쓰는 건물.'},
+ W13:{s:'외식조리 계열 학과와 실습실이 모인 13층 건물. 꼭대기에 솔파인 레스토랑.',m:['중간층 다리로 Culinary Center(W14)와 이어져.']},
+ W14:{a:'커리너리아트센터',s:'우송타워 바로 옆. 조리 계열 강의실·실습실과 학과사무실.',m:['중간층 다리로 우송타워(W13)와 이어져.']},
+ W15:{s:'AI·컴퓨터공학과와 반려동물 계열 학과가 쓰는 건물.',m:['입구가 2층에 있고 1층에는 없어.']},
+ W16:{s:'학생식당·편의점·서점·우편이 모여 있는 건물. 학생복지처와 동아리방도 여기.'},
+ W17:{a:'미디어관',s:'미디어·게임 계열 전공이 쓰는 건물.'},
+ W18:{s:'공연장. 우송고등학교 옆.'},
+ W19:{s:'엔디컷국제대학과 자유전공학부가 쓰는 건물.'},
+ E1:{s:'동캠퍼스 식당·서점·편의점이 있는 강의동.'},
+ E2:{s:'동캠퍼스 강의동. 1층에 솔카페.'},
+ E3:{a:'학술정보센터',s:'동캠퍼스 도서관이 있는 건물.',m:['605번 시내버스 정류장에서 가장 가까운 건물.']},
+ E4:{s:'예전에 대학본부와 학군단이 쓰던 건물.'},
+ E5:{s:'동캠퍼스 체육관.'},
+ E6:{s:'동캠퍼스 학생회관.'},
+ E7:{s:'솔지오 기숙사 1동.',m:['엘리베이터와 세탁기·건조기가 동마다 있어.']},
+ E8:{s:'솔지오 기숙사 2동. 기숙사 사무실이 있는 동.',m:['엘리베이터와 세탁기·건조기가 동마다 있어.']},
+ E9:{s:'솔지오 기숙사 3동.',m:['엘리베이터와 세탁기·건조기가 동마다 있어.']},
+ E10:{s:'솔지오 기숙사 4동. 학생회관(E6) 4층 통로로 이어져.',m:['엘리베이터와 세탁기·건조기가 동마다 있어.']},
+ E11:{a:'솔스터디홀',s:'라운지와 교양수업 공간.'},
+ S1:{s:'어학 강의실과 공자아카데미가 있는 건물.'},
+ S2:{s:'IT 계열 강의실·실습실 건물.'},
+ S3:{s:'뷰티디자인경영학과 건물.'},
+ S4:{s:'반려동물 계열 실습 건물.'},
+ S5:{s:'자동차 계열 실습 건물.'},
+ '01':{s:'동캠퍼스와 가까운 기숙사.'},
+ '03':{s:'서캠퍼스 학생들이 많이 쓰는 기숙사 남자동. 우송도서관 옆 캠퍼스 외곽.'},
+ '04':{s:'청운1숙 기숙사 여자동. 우송도서관 옆 캠퍼스 외곽.'},
+ '05':{s:'화상 전문 병원.'},
+ '06':{a:'SolBridge',s:'대전역 뒤편에 따로 있는 14층 건물. 주소는 우암로 128.'},
+ JCFS:{s:'산학협력관(W2) 뒤쪽에 있는 건물.',m:['휴먼디지털인터페이스학부가 쓰던 건물로 알려져 있어.']}
+};
+/* ===== 층별 안내 (나무위키 "우송대학교/캠퍼스" 기준 — 학과 개편 전 이름이 섞여 있을 수 있음) ===== */
+const F = {
+ W1:[['1F','학생경력개발센터, 정보라운지'],['2F','단체학습실'],['3F','멀티미디어실, 노트북 열람실'],['4F','일반 열람실'],['5F','도서자료실'],['6F','참고열람실, 정기간행물실, 논문자료실, 고서실'],['7F','학술정보센터 정보지원팀, 한국어교육원'],['8F','우송미술관, 역사관']],
+ W2:[['1F','매니지먼트학부(경영학전공)'],['3F','강의실, 실습실']],
+ W3:[['1F','유학생지원팀, 학생식당, 기숙사 사무실'],['2F','보건실'],['3~12F','생활관']],
+ W4:[['B1F','실습실'],['1F','강의실, 실습실(우송디젯아카데미)'],['2F','철도건설시스템학부, 철도차량시스템학과'],['3F','강의실, 실습실'],['4F','철도전기시스템학과'],['5F','소방방재학과, 물류시스템학과']],
+ W5:[['B1F','주차장'],['1F','합동강의실, 주차장'],['2F','스포츠건강관리전공, 강의실, 우송스포츠센터'],['3F','응급구조학과, 간호학과'],['4F','작업치료학과, 언어치료청각재활학과'],['5F','물리치료학과, 스포츠재활전공, 보건의료경영학과, 강의실'],['6F','철도경영학과']],
+ W6:[['1F','교양교육원 사무실, 로비, English Corner'],['1~5F','강의실']],
+ W7:[['1F','입학처, 교무처, 총무처(장학), 시설처, 관리팀, 산학협력단'],['2F','전략기획처, 총무처(총무·구매)'],['3F','기획처, 대외협력처, 총장실, 글로벌센터, Endicott 자유전공학부, 유아교육과, 금융·세무경영전공'],['4F','대회의실'],['5F','회의실']],
+ W10:[['1F','시청각실, 실습실'],['2F','강의실, 실습실'],['3F','사회복지전공, 아동복지전공'],['4F','강의실, 실습실'],['5F','강의실, 실습실']],
+ W12:[['B1F','실습실'],['1F','스타리코 카페'],['2F','강의실'],['3F','강의실'],['5F','글로벌조리학과']],
+ W13:[['B1~1F','주차장'],['2F','실습실'],['3F','실습실, 강의실'],['4F','세미나실'],['5F','강의실'],['6F','외식조리영양학부'],['7F','강의실'],['8F','외식조리·경영전공'],['9F','호텔관광경영학과'],['10F','외식조리전공, 글로벌한식조리전공'],['11~12F','실습실'],['13F','솔파인 레스토랑']],
+ W14:[['B1~5F','강의실, 실습실']],
+ W15:[['B1~1F','실습실'],['3~5F','강의실']],
+ W16:[['1F','학생식당, 구내서점, 편의점, 우체국'],['2F','교직원식당'],['3F','동아리방, 학생복지처, 장애학생지원센터, 사회봉사단, 학생상담센터'],['4F','교수학습지원센터, 강의실'],['5F','대강당, 강의실']],
+ W17:[['B1F','강의실, 실습실'],['1F','미디어디자인전공'],['2F','강의실, 실습실'],['3F','게임멀티미디어전공'],['4F','영상콘텐츠전공'],['5F','강의실, 실습실']],
+ W19:[['1F','강의실'],['2F','국제행정실, 교수연구실, 자습실']],
+ E1:[['B2~1F','주차장'],['1F','구내서점, 학생·교직원식당'],['2~9F','강의실, 실습실']],
+ E2:[['B1F','주차장'],['1F','솔카페'],['3~8F','강의실, 실습실']],
+ E3:[['1F','주차장'],['2F','갤러리'],['3F','정보화자료실, 자양홀'],['4F','파인홀, 우송도서관'],['5F','우송도서관'],['8F','강의실, 실습실'],['9~10F','대전디지털시험센터']],
+ E5:[['1F','우송스포츠센터'],['2~3F','강당']],
+ E6:[['1F','학생식당'],['4F','크로톤빌센터·독행관(E10) 기숙사로 가는 통로'],['5F','동캠 주차장·사무실로 가는 통로']],
+ E11:[['1F','Global Lounge, Student Lounge, Staff Office'],['2F','International Communication Zone']],
+ S1:[['B2F','주차장'],['B1F','강의실, 시청각실'],['1F','한식솔반(식당)'],['2~3F','강의실, 연구실, 글로벌복수학위학과'],['4F','공자아카데미'],['5F','TESOL-MALL대학원'],['7F','강의실'],['8F','강당']],
+ S2:[['지하','주차장, 강의실, 시청각실'],['1F','우송IT교육센터, 정보라운지, 강의실'],['3~4F','강의실'],['5F','강의실, 세미나실'],['6F','실습실'],['7F','스마트IT·보안전공, 컴퓨터·정보보안전공'],['8F','시청각실']],
+ S3:[['B1F','실습실'],['1F','뷰티샵'],['2F','뷰티디자인경영학과'],['3F','실습실'],['4~5F','강의실']],
+ S4:[['B1F','실습실'],['1F','솔펫동물병원, 애견미용실, 놀이터'],['2~4F','강의실']],
+ S5:[['B1F','우송오토테크'],['1F','실습실'],['4F','강의실']],
+ '03':[['B1F','학생식당'],['1F','정보라운지'],['2~6F','생활관']],
+ '04':[['1F','정보라운지'],['2F','학생식당'],['2~5F','생활관']],
+ '05':[['1F','대전화병원'],['2~3F','병실']],
+ '06':[['B2F','솔스포렉스 수영장'],['B1F','솔스포렉스 헬스장'],['1F','솔코리안 레스토랑, 솔도르리 카페'],['2F','도서관'],['4F','강당'],['5F','솔브릿지경영학부'],['6~12F','강의실, 연구실']]
+};
+const KEYC='wsu-custom-v1';
+let custom={}; try{ custom=JSON.parse(localStorage.getItem(KEYC)||'{}')||{}; }catch(e){ custom={}; }
+const saveC=()=>{ try{ localStorage.setItem(KEYC,JSON.stringify(custom)); }catch(e){}; if(typeof cloudQueueSync==='function')cloudQueueSync(); };
+const nrm = s => String(s).toLowerCase().replace(/[\s·(),]/g,'');
+function buildInfo(b){
+  const list=(D[b.code]||[]).map(n=>({n,room:'',tel:''}));
+  (R[b.code]||[]).forEach(([n,room,tel])=>{
+    const hit=list.find(x=>nrm(x.n)===nrm(n)||nrm(x.n).includes(nrm(n))||nrm(n).includes(nrm(x.n)));
+    if(hit){ hit.room=room; hit.tel=tel; } else list.push({n,room,tel});
+  });
+  (custom[b.code]||[]).forEach((c,i)=>list.push({n:c.n,room:c.room,tel:'',mine:i}));
+  b.items=list;
+}
+B.forEach(buildInfo);
+B.forEach(b=>{
+  const i=INFO[b.code]||{};
+  b.alias=i.a||''; b.sum=i.s||''; b.memo=i.m||[]; b.fg=F[b.code]||[];
+  b.fl=[]; b.fg.forEach(([f,t])=>t.split(/,\s*/).forEach(n=>b.fl.push({f,n})));   // 검색용: 층별 시설을 하나씩
+});
+function floorOf(room){ const s=String(room||''); let m=/^(\d{1,2})층/.exec(s); if(m) return +m[1]; m=/^(\d{1,2})\d{2}(?!\d)/.exec(s); return m?+m[1]:null; }  // 309호→3층, B211 같은 건 층 표시 안 함
+
+/* 흔히 쓰는 말 → 공식 명칭 */
+const SYN = {
+ 'atm':'현금인출기','에이티엠':'현금인출기','돈':'현금인출기','출금':'현금인출기',
+ '헬스':'체력단련실 헬스장 스포츠센터','운동':'체력단련실 헬스장 스포츠센터','짐':'체력단련실 헬스장',
+ '밥':'식당 레스토랑','학식':'학생식당','편의점':'cu','증명서':'자동증명발급기','서류':'자동증명발급기',
+ '우체국':'우편','택배':'우편','책':'서점 도서관','상담':'상담센터','동아리':'동아리방',
+ '컴공':'컴퓨터공학','컴퓨터':'컴퓨터공학','게임':'게임','조리':'조리','요리':'조리','빵':'제과제빵 베이커리',
+ '간호':'간호학과','물치':'물리치료','작치':'작업치료','응구':'응급구조','철도':'철도','호텔':'호텔',
+ '수영':'수영장','커피':'카페','열람실':'도서관 정보화자료실','총장':'총장실','입학':'입학처',
+ '주차':'주차장','프린트':'출력기','출력':'출력기','인쇄':'출력기','복사':'출력기','공연':'공연장 예술회관','세탁':'세탁기',
+ '예비군':'예비군연대본부','병무':'예비군연대본부','민방위':'예비군연대본부','복학':'복학지원센터','휴학':'복학지원센터'
+};
+const CAMP = {W:'서캠퍼스',E:'동캠퍼스',X:'캠퍼스 밖'};
+const CENTER = [36.338,127.446];
+const KEY = 'wsu-pins-v1', HINTKEY='wsu-hint-off';
+const $ = id => document.getElementById(id);
+
+/* ===== 저장 ===== */
+let pins = {};
+try { pins = JSON.parse(localStorage.getItem(KEY)||'{}') || {}; } catch(e){ pins = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pins)); } catch(e){}; if(typeof cloudQueueSync==='function')cloudQueueSync(); };
+let auto = {};   // OpenStreetMap에서 자동으로 찾은 건물 위치 (내가 등록한 핀이 우선)
+try { auto = JSON.parse(localStorage.getItem('wsu-auto-v1')||'{}') || {}; } catch(e){ auto = {}; }
+const saveA = () => { try { localStorage.setItem('wsu-auto-v1', JSON.stringify(auto)); } catch(e){} };
+
+/* 좌표 출처 및 범위 검증. 주소 좌표는 캠퍼스 중심 참고값이지 건물 좌표가 아니다.
+   서캠: 동대전로 171 / 동캠: 백룡로 59 (도로명 주소 좌표 참고)
+   W16: 학생회관 내 CU 공개자료 근사값, 06: OSM 건물 윤곽 중심 근사값. */
+const CAMPUS_ANCHOR={W:[36.33755,127.44537],E:[36.33516,127.45319]};
+const REFERENCE_POS={W16:[36.337811,127.445900],'06':[36.338500,127.432470]};
+const GENERAL_BOUNDS=[36.315,127.410,36.357,127.480];
+const PIN_SOURCE_KEY='wsu-pin-source-v15',MIGRATION_KEY='ieum-v15-clean-v1';
+let pinSources={};try{pinSources=JSON.parse(localStorage.getItem(PIN_SOURCE_KEY)||'{}')||{}}catch(e){}
+const savePinSources=()=>{try{localStorage.setItem(PIN_SOURCE_KEY,JSON.stringify(pinSources))}catch(e){};if(typeof cloudQueueSync==='function')cloudQueueSync()};
+function coordinateOK(p){return Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&p[0]>=GENERAL_BOUNDS[0]&&p[0]<=GENERAL_BOUNDS[2]&&p[1]>=GENERAL_BOUNDS[1]&&p[1]<=GENERAL_BOUNDS[3]}
+function roughDistance(a,b){const x=(a[0]-b[0])*111195,y=(a[1]-b[1])*111195*Math.cos(a[0]*Math.PI/180);return Math.hypot(x,y)}
+function campusPlausible(b,p){
+ if(!coordinateOK(p))return false;
+ if(b.c==='X')return true;  // 외부 건물은 서캠/동캠과 다른 구역에 있을 수 있음
+ const own=CAMPUS_ANCHOR[b.c],other=CAMPUS_ANCHOR[b.c==='W'?'E':'W'];
+ const d=roughDistance(p,own),dOther=roughDistance(p,other);
+ // 범위는 의도적으로 넉넉하게 설정한 오류 필터이지 정확한 캠퍼스 경계가 아니다.
+ return d<=1050 && !(dOther+170<d && dOther<550);
+}
+function positionOf(b){
+ if(pins[b.code]&&campusPlausible(b,pins[b.code]))return pins[b.code];
+ if(auto[b.code]&&campusPlausible(b,auto[b.code]))return auto[b.code];
+ return REFERENCE_POS[b.code]||null;
+}
+function positionKind(b){
+ if(pins[b.code])return campusPlausible(b,pins[b.code])?(pinSources[b.code]==='reference'?'reference':'admin'):'invalid';
+ if(auto[b.code])return campusPlausible(b,auto[b.code])?'osm':'invalid';
+ return REFERENCE_POS[b.code]?'reference':'missing';
+}
+const STATUS_LABEL={admin:'관리자 지정 · 미검증',reference:'공개자료 근사 · 미검증',osm:'OSM 자동 추정 · 미검증',missing:'좌표 없음',invalid:'위치 이상 · 사용 차단'};
+// 구버전에서 일반 검색으로 얻은 자동 좌표는 검증 불가능하므로 1회 폐기.
+try{if(localStorage.getItem(MIGRATION_KEY)!=='1'){
+  // 이전 자동 좌표는 일괄 삭제하지 않고 campusPlausible로 개별 검증한다.
+  if(pins.W16&&roughDistance(pins.W16,REFERENCE_POS.W16)<2&&!pinSources.W16){pinSources.W16='reference';savePinSources()}
+  localStorage.setItem(MIGRATION_KEY,'1');
+}}catch(e){}
+// W16의 한남대 등 잘못된 좌표는 경로 계산에 사용하지 않고 근사 좌표를 보여 준다.
+
+
+/* ===== 지도 ===== */
+const map = L.map('map',{zoomControl:false}).setView(CENTER,17);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+
+let me=null, meMarker=null, meCircle=null, follow=true, heading=null;
+let selected=null, target=null, guideLine=null, placing=null, arrived=false;
+
+// 좌표가 없는 건물은 지도 위 '임시 배치 영역'에 전부 표시한다.
+// 이 좌표는 실제 건물 위치가 아니며 길찾기에는 절대 사용하지 않는다.
+function stagingPosition(b){
+  const group=B.filter(x=>x.c===b.c && !positionOf(x));
+  const i=group.findIndex(x=>x.code===b.code);
+  const anchor=b.c==='W'?[36.33965,127.4420]:b.c==='E'?[36.33695,127.4557]:[36.33325,127.4432];
+  const cols=b.c==='X'?4:5;
+  return [anchor[0]-Math.floor(i/cols)*0.00023,anchor[1]+(i%cols)*0.00038];
+}
+function drawPins(){
+  layer.clearLayers();
+  const small = map.getZoom() < 18;
+  B.forEach(b=>{
+    const actual=positionOf(b);
+    const p=actual||stagingPosition(b);
+    const unplaced=!actual;
+    const cls=`pin ${b.c}${selected===b.code?' sel':''}${small&&selected!==b.code?' small':''}`;
+    const name=esc(b.name);
+    const html=`<div class="${cls}${unplaced?' unplaced':''}" title="${unplaced?'임시 배치 · 실제 위치 아님':name}"><div class="lb"><span class="cd">${esc(b.code)}</span><span class="nmx">${name}</span>${unplaced?'<span class="pending">?</span>':''}</div><div class="tail"></div></div>`;
+    const m=L.marker(p,{icon:L.divIcon({className:'',html,iconSize:[0,0]}),zIndexOffset:selected===b.code?900:unplaced?300:0});
+    m.on('click',()=>openSheet(b));
+    m.addTo(layer);
+  });
+}
+map.on('zoomend',drawPins);
+
+/* ===== 검색 / 목록 ===== */
+let tab='all';
+function renderList(){
+  const q = $('q').value.trim().toLowerCase();
+  const box = $('results');
+  const norm = s => s.toLowerCase().replace(/[\s·()]/g,'');
+  const terms = q ? [norm(q), ...(SYN[q.replace(/\s/g,'').toLowerCase()]||'').split(' ').filter(Boolean).map(norm)] : [];
+  const hits = t => terms.some(x=>norm(t).includes(x));
+  const list = [];
+  B.forEach(b=>{
+    if(tab!=='all' && b.c!==tab) return;
+    if(!q){ list.push({b,m:[]}); return; }
+    const hi = b.items.filter(x=>hits(x.n));
+    const m = hi.map(x=>x.n+(x.room?' · '+x.room:''));
+    const seen = hi.map(x=>norm(x.n)), fm = new Map();
+    b.fl.forEach(x=>{                                  // 층별 안내에서 찾은 것 (공식 항목과 겹치면 생략)
+      if(!hits(x.n)) return; const k=norm(x.n);
+      if(seen.some(s=>s.includes(k)||k.includes(s))) return;
+      fm.set(x.n,[...(fm.get(x.n)||[]),x.f]);
+    });
+    fm.forEach((fs,n)=>m.push(n+' · '+fs.join('·')));
+    if(!m.length && b.alias && hits(b.alias)) m.push('다른 이름: '+b.alias);
+    if(m.length || hits(b.code+b.name+b.tags+b.alias+CAMP[b.c])) list.push({b,m});
+  });
+  box.hidden=false;
+  if(!list.length){ box.innerHTML='<div class="empty">"'+esc($('q').value)+'" 검색 결과가 없어</div>'; return; }
+  let html='', last='';
+  list.forEach(({b,m})=>{
+    if(b.c!==last){ html+=`<div class="grp">${CAMP[b.c]}</div>`; last=b.c; }
+    const p=positionOf(b);
+    const kind=positionKind(b),locationTag={admin:'지정됨',reference:'근사',osm:'추정',missing:'미등록',invalid:'⚠ 위치 이상'}[kind];
+    const sub = m.length ? `<span class="mt">${m.map(x=>'<mark>'+esc(x)+'</mark>').join(' ')}</span>` : '';
+    html+=`<div class="row" data-code="${b.code}"><span class="code c-${b.c}">${b.code}</span><span class="nm">${b.name}${sub}</span><span class="rt${p?'':' no'}">${kind==='invalid'?locationTag:p?(me?fmtM(dist(me,p))+' · '+locationTag:locationTag):locationTag}</span></div>`;
+  });
+  box.innerHTML=html;
+  box.querySelectorAll('.row[data-code]').forEach(r=>r.onclick=()=>{
+    box.hidden=true; $('q').blur(); startGuide(B.find(x=>x.code===r.dataset.code));
+  });
+}
+$('q').addEventListener('input',renderList);
+$('q').addEventListener('focus',renderList);
+$('tabs').querySelectorAll('button').forEach(btn=>btn.onclick=()=>{
+  const again = btn.classList.contains('on') && !$('results').hidden;
+  $('tabs').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  if(again){ $('results').hidden=true; return; }
+  btn.classList.add('on'); tab=btn.dataset.c; renderList();
+});
+map.on('click',e=>{
+  if(placing){ if(adminUnlocked) setPin(placing,[e.latlng.lat,e.latlng.lng]); return; }
+  const wasOpen=!$('results').hidden;                 // 검색 목록을 닫으려고 누른 거면 건물 조회는 안 함
+  $('results').hidden=true; $('tabs').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  if(!wasOpen) tapLookup([e.latlng.lat,e.latlng.lng]);
+});
+
+/* ===== 지도에 시설(가게) 표시 ===== */
+const CATS=[
+ {k:'food',e:'🍚',n:'식당',re:/식당|레스토랑/, osm:t=>/^(restaurant|fast_food|food_court)$/.test(t.amenity||'')},
+ {k:'cafe',e:'☕',n:'카페',re:/카페|베이커리/, osm:t=>t.amenity==='cafe'||t.shop==='bakery'},
+ {k:'cvs',e:'🏪',n:'편의점',re:/편의점/, osm:t=>t.shop==='convenience'||t.shop==='supermarket'},
+ {k:'atm',e:'💳',n:'ATM·은행',re:/현금인출기/, osm:t=>t.amenity==='atm'||t.amenity==='bank'},
+ {k:'doc',e:'📄',n:'증명서·우편',re:/증명발급기|우편/, osm:t=>t.amenity==='post_office'},
+ {k:'gym',e:'🏋️',n:'헬스',re:/체력단련|헬스|스포츠센터|수영/, osm:t=>t.leisure==='fitness_centre'},
+ {k:'lib',e:'📚',n:'도서관·서점',re:/도서관|자료실|서점/, osm:t=>t.amenity==='library'||t.shop==='books'}
+];
+const catOn=new Set();
+const flayer=L.layerGroup().addTo(map);
+let osmPlaces=[];        // OpenStreetMap에 있는 주변 가게
+$('cats').innerHTML=CATS.map(c=>`<button data-k="${c.k}">${c.e} ${c.n}</button>`).join('');
+$('cats').querySelectorAll('button').forEach(btn=>btn.onclick=()=>{
+  const k=btn.dataset.k;
+  if(catOn.has(k)){ catOn.delete(k); btn.classList.remove('on'); } else { catOn.add(k); btn.classList.add('on'); }
+  $('results').hidden=true;
+  drawFac(true);
+});
+function drawFac(announce){
+  flayer.clearLayers();
+  if(!catOn.size) return;
+  let shown=0, missing=0;
+  const cats=CATS.filter(c=>catOn.has(c.k));
+  // 1) 우리 건물 안 시설
+  B.forEach(b=>{
+    const hit=cats.filter(c=>b.items.some(x=>c.re.test(x.n)));
+    if(!hit.length) return;
+    const p=positionOf(b);
+    if(!p){ missing++; return; }
+    shown++;
+    const html=`<div class="fac">${hit.map(c=>`<span title="${c.n}">${c.e}</span>`).join('')}</div>`;
+    const m=L.marker(p,{icon:L.divIcon({className:'',html,iconSize:[0,0]}),zIndexOffset:500});
+    m.on('click',()=>openSheet(b)); m.addTo(flayer);
+  });
+  // 2) 주변 가게 (OpenStreetMap)
+  osmPlaces.forEach(pl=>{
+    const c=cats.find(c=>c.osm(pl.t)); if(!c) return;
+    shown++;
+    const m=L.marker(pl.ll,{icon:L.divIcon({className:'',html:`<div class="fac osm"><span>${c.e}</span></div>`,iconSize:[0,0]}),zIndexOffset:400});
+    m.on('click',()=>openPlace({...pl,cat:c})); m.addTo(flayer);
+  });
+  if(announce){
+    if(!shown) toast(missing?`위치 미등록 건물에만 있어 (${missing}곳). 건물 위치를 먼저 지정해줘.`:'지도에 표시할 곳이 없어');
+    else if(missing) toast(`${missing}곳은 건물 위치가 없어서 안 보여`);
+  }
+}
+
+/* 주변 가게 눌렀을 때 */
+function openPlace(pl){
+  selected=null; drawPins();
+  $('sCode').textContent=pl.cat.e; $('sCode').className='code c-X';
+  $('sTitle').textContent=pl.name;
+  $('sSub').innerHTML=`${pl.cat.n} · 주변 가게 (OpenStreetMap)`+(me?` · 직선 <b>${fmtM(dist(me,pl.ll))}</b>`:'');
+  $('sItems').innerHTML=''; $('sItems').hidden=true; $('sDesc').hidden=true;
+  const k=`https://map.kakao.com/link/to/${encodeURIComponent(pl.name)},${pl.ll[0]},${pl.ll[1]}`;
+  $('sActs').innerHTML=`<button class="pri" id="plGo">➜ 여기로 길찾기</button><a href="${k}" target="_blank" rel="noopener">카카오맵</a><a href="https://map.kakao.com/link/search/${encodeURIComponent(pl.name)}" target="_blank" rel="noopener">가게 정보 보기</a>`;
+  $('plGo').onclick=()=>startGuide({code:'',name:pl.name,c:'X',items:[],ll:pl.ll,isPlace:true,pl});
+  $('sheet').hidden=false; $('guide').hidden=true; $('compass').hidden=true;
+  map.setView(pl.ll,Math.max(map.getZoom(),18));
+}
+
+/* ===== 지도에서 건물 직접 누르기 (OpenStreetMap 건물 윤곽) ===== */
+const blayer=L.layerGroup().addTo(map);
+const CCOL={W:'#1f7a4d',E:'#2463c9',X:'#c26a12'};
+let osmB=[];
+function centroid(g){ let a=0,b=0; g.forEach(p=>{a+=p[0];b+=p[1];}); return [+(a/g.length).toFixed(6),+(b/g.length).toFixed(6)]; }
+const LEGACY_ALIASES = {
+ W1:['우송도서관','Woosong Library'], W2:['산학협력관','Q Building','Q관'], 'W2-1':['학군단','ROTC'],
+ W3:['유학생기숙사','Foreign Dormitory','외국인기숙사'], W4:['철도물류관','X/KB Building'], W5:['보건의료과학관','P/Da Building'],
+ W6:['교양교육관','Na Building','나관'], W7:['우송관','Admin Building','대학본부','본관'], W8:['우송유치원','Woosong Kindergarten','유치원'],
+ W9:['정례원'], W10:['사회복지융합관','사회복지관'], W11:['체육관','Gymnasium'], W12:['SICA','Sol International Culinary Arts'],
+ W13:['우송타워','Woosong Tower'], W14:['Culinary Center','컬리너리센터'], W15:['식품건축관','Cafeteria'],
+ W16:['학생회관','Student Union','SIS'], W17:['미디어융합관','K2-Media Ctr','K2 Media Center','미디어센터'], W18:['우송예술회관','Woosong Art Hall'],
+ W19:['Endicott Building','엔디컷빌딩','엔디컷'],
+ E1:['테크노디자인센터','Techno Design Center'], E2:['국제경영센터'], E3:['학술정보관','L Building','L관'], E4:['구 대학본부','대학본부','M Building','M관'],
+ E5:['체육관','Gymnasium','우송스포츠센터'], E6:['학생회관','Student Union'], E7:['자립관','솔지오1'], E8:['청솔관','솔지오2'], E9:['단정관','솔지오3'], E10:['독행관','솔지오4'],
+ E11:['크로톤빌센터','Crotonville'],
+ S1:['우송어학센터','Woosong Language Center'], S2:['우송IT교육센터','우송IT센터','Woosong IT Center'], S3:['우송뷰티센터','Woosong Beauty Center'],
+ S4:['우송애견센터','Woosong Pet Center','Woosong Dog Center'], S5:['우송오토센터','Woosong Auto Center'],
+ '01':['HRD기숙사'], '03':['청운1숙(남자동)','청운1숙(남)'], '04':['청운1숙(여자동)','청운1숙(여)'],
+ '05':['대전화병원'], '06':['솔브릿지국제경영대학','SolBridge International School of Business','솔브릿지','SolBridge'],
+ JCFS:['JCFS Building','JCFS','JW KIM College of Future Studies']
+};
+function matchB(t,c){
+ const cand=[t.ref,t.name,t['name:ko'],t['name:en'],t.alt_name,t.short_name,t.official_name,t.old_name].filter(Boolean).map(String);
+ const codes=cand.flatMap(s=>[...s.matchAll(/(?:^|[^A-Za-z0-9])([WE]\d{1,2}(?:-1)?)(?![0-9])/gi)].map(m=>m[1].toUpperCase()));
+ for(const code of codes){const b=B.find(x=>x.code===code);if(b&&campusPlausible(b,c))return b}
+ const names=cand.map(s=>nrm(s.replace(/우송대학교|우송정보대학|woosong university|woosong college/gi,''))).filter(Boolean);
+ let matches=[];
+ for(const b of B){
+   if(!campusPlausible(b,c))continue;
+   const aliases=[b.name,b.alias,...(LEGACY_ALIASES[b.code]||[])].filter(Boolean).map(s=>nrm(s.replace(/\(.*?\)/g,'')));
+   const generic=/^(학생회관|체육관|도서관|대학본부|본부)$/.test(nrm(b.name.replace(/\(.*?\)/g,'')));
+   if(generic)continue;
+   if(names.some(n=>aliases.some(a=>a.length>=3&&(n===a||n===nrm('우송'+a)))))matches.push(b);
+ }
+ return matches.length===1?matches[0]:null; // 여러 건물과 매칭되면 자동 확정 금지
+}
+const OUTLINE_KEY='wsu-outline-links-v15';
+let outlineLinks={};try{outlineLinks=JSON.parse(localStorage.getItem(OUTLINE_KEY)||'{}')||{}}catch(e){}
+const saveOutlineLinks=()=>{try{localStorage.setItem(OUTLINE_KEY,JSON.stringify(outlineLinks))}catch(e){};if(typeof cloudQueueSync==='function')cloudQueueSync()};
+function matchedBuilding(o){
+ const c=centroid(o.g),code=o.id&&outlineLinks[o.id];
+ if(code){const b=B.find(b=>b.code===code);if(b&&campusPlausible(b,c))return b}
+ return byPin(o.g)||matchB(o.t,c)||null;
+}
+
+function drawBuildings(){
+  blayer.clearLayers();
+  osmB.forEach(o=>{
+    const b=o.b;
+    const col=b?CCOL[b.c]:'#8a948f';
+    const poly=L.polygon(o.g,{color:col,weight:b?2:1,opacity:b?.9:.6,fillColor:col,fillOpacity:b?.22:.08,bubblingMouseEvents:false});
+    poly.on('click',e=>{
+      if(placing){ if(adminUnlocked) setPin(placing,[e.latlng.lat,e.latlng.lng]); return; }
+      $('results').hidden=true;
+      if(b) openSheet(b); else openUnknown(o);
+    });
+    poly.addTo(blayer);
+  });
+}
+/* 목록이랑 연결 안 된 건물 → 어떤 건물인지 골라주기 */
+function openUnknown(o){
+  selected=null; drawPins();
+  const nm=o.t.name||o.t['name:ko']||'이름 없는 건물';
+  $('sCode').textContent='?'; $('sCode').className='code';
+  $('sTitle').textContent=nm;
+  $('sSub').textContent='건물 윤곽은 확인됐지만 우송대 건물 번호는 확인되지 않았어.';
+  $('sDesc').hidden=true;
+  if(adminUnlocked){
+    const opts=['W','E','X'].map(c=>`<optgroup label="${CAMP[c]}">`+B.filter(b=>b.c===c).map(b=>`<option value="${b.code}">${b.code} ${b.name}</option>`).join('')+'</optgroup>').join('');
+    $('sItems').innerHTML=`<div class="pick"><p>관리자 전용 · 이 윤곽을 연결할 건물 선택</p><select class="sel-b" id="pickSel">${opts}</select><div class="acts"><button class="pri reg" id="pickOk">이 건물로 지정</button></div></div>`;
+    $('pickOk').onclick=()=>{
+      if(!adminUnlocked){toast('관리자 인증이 필요해');return}
+      const code=$('pickSel').value,b=B.find(x=>x.code===code);
+      if(!b||!campusPlausible(b,o.c)){toast('선택한 캠퍼스와 좌표가 맞지 않아. 위치를 확인해줘.');return}
+      if(pins[code]&&roughDistance(pins[code],o.c)>350&&!confirm('기존 위치에서 350m 이상 떨어져 있어. 바꿀까?'))return;
+      pins[code]=o.c;pinSources[code]='admin';save();savePinSources();
+      if(o.id){outlineLinks[o.id]=code;saveOutlineLinks()}
+      o.b=b;drawBuildings();drawPins();drawFac(false);toast(`${b.name} 위치를 저장했어`);openSheet(b);
+    };
+  }else{
+    $('sItems').innerHTML='<div class="pick">위치 연결은 관리자 모드에서만 가능해.</div>';
+  }
+  $('sItems').hidden=false;
+  $('sActs').innerHTML=`<button class="pri" id="ukGo">➜ 이 윤곽으로 길찾기</button>`;
+  $('ukGo').onclick=()=>startGuide({code:'',name:nm,c:'X',items:[],ll:o.c,isPlace:true,pl:null});
+  $('sheet').hidden=false; $('guide').hidden=true; $('compass').hidden=true;
+}
+
+/* OpenStreetMap에서 학교 건물 윤곽 + 주변 가게 불러오기
+   조회를 셋으로 나눠서 하나가 실패해도 나머지는 쓰게 함: ①이름 있는 건물(필수·빠름) ②주변 가게 ③캠퍼스 구역 안 이름 없는 건물 */
+const OSM_KEY='wsu-osm-v17-fix1', TAP_KEY='wsu-tapb-v1';
+const CAMPUS_BOX='36.330,127.436,36.347,127.458';      // 서캠·동캠
+const WIDE_BOX='36.320,127.415,36.355,127.475';        // 솔브릿지·외부 건물까지
+const OVP_HOSTS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+const NM='우송|솔브릿지|SolBridge|Woosong';
+const Q_NAMED=`[out:json][timeout:20];
+(way["building"]["name"](${CAMPUS_BOX});
+ relation["building"]["name"](${CAMPUS_BOX});
+ way["building"]["name"~"${NM}|솔지오|청운",i](${WIDE_BOX}););
+out geom tags;`;
+const Q1=`[out:json][timeout:25];
+(
+  way["name"~"우송|솔브릿지|청운|화병원|HRD|JCFS|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  way["name:en"~"Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  way["building"]["name"](36.329,127.438,36.344,127.459);
+);
+out tags geom;
+relation["building"]["name"](36.329,127.438,36.344,127.459);
+out tags center;
+(
+  node["name"~"우송|솔브릿지|청운|화병원|HRD|JCFS|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  node["name:en"~"Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  node["amenity"~"^(cafe|restaurant|fast_food|food_court|atm|bank|library|post_office)$"](around:800,36.3368,127.4490);
+  node["shop"~"^(convenience|supermarket|bakery|books)$"](around:800,36.3368,127.4490);
+  node["leisure"="fitness_centre"](around:800,36.3368,127.4490);
+);
+out;
+(
+  way["amenity"~"^(cafe|restaurant|fast_food|food_court|bank|library|post_office)$"]["name"](around:800,36.3368,127.4490);
+  way["shop"~"^(convenience|supermarket|bakery|books)$"]["name"](around:800,36.3368,127.4490);
+);
+out tags center;`;
+const Q_SHOPS=`[out:json][timeout:20];
+(node["amenity"~"^(cafe|restaurant|fast_food|food_court|atm|bank|library|post_office)$"](36.331,127.436,36.346,127.456);
+ node["shop"~"^(convenience|supermarket|bakery|books)$"](36.331,127.436,36.346,127.456);
+ node["leisure"="fitness_centre"](36.331,127.436,36.346,127.456););
+out tags;`;
+const Q_AREA=`[out:json][timeout:25];
+(way["amenity"~"^(university|college)$"]["name"~"${NM}",i](${WIDE_BOX});
+ relation["amenity"~"^(university|college)$"]["name"~"${NM}",i](${WIDE_BOX}););
+map_to_area->.u;
+(way["building"](area.u);relation["building"](area.u););
+out geom tags;`;
+let tapB=[];                                           // 지도에서 눌러서 찾은 건물 (다음에도 바로 눌리게 저장)
+try{ tapB=JSON.parse(localStorage.getItem(TAP_KEY)||'[]')||[]; }catch(e){ tapB=[]; }
+const ring6=g=>g.map(p=>[+(+p.lat).toFixed(6),+(+p.lon).toFixed(6)]);
+const byPin=g=>{const hits=B.filter(b=>pins[b.code]&&campusPlausible(b,pins[b.code])&&inPoly(pins[b.code],g));return hits.length===1?hits[0]:null}; // 수동 지정 좌표가 윤곽 내부에 있을 때만 연결
+function setOsmB(list){
+  const seen=new Set();
+  osmB=list.map(o=>{ const c=centroid(o.g); return {...o,c,b:matchedBuilding(o)}; })
+           .filter(o=>{ const k=o.c.join(','); if(seen.has(k)) return false; seen.add(k); return true; });
+}
+let ovpErr='';
+async function overpass(q,ms){                         // 서버 여러 곳에 차례로 시도. 성공하면 요소 배열, 전부 실패하면 null
+  for(const host of OVP_HOSTS){
+    const ac=new AbortController(), tm=setTimeout(()=>ac.abort(),ms||25000);
+    try{
+      const r=await fetch(host,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ac.signal});
+      if(!r.ok){ ovpErr='서버 응답 '+r.status; continue; }
+      const j=await r.json();
+      if(j.remark && !(j.elements||[]).length){ ovpErr='조회 시간 초과'; continue; }
+      return j.elements||[];
+    }catch(e){ ovpErr=e&&e.name==='AbortError'?'시간 초과':'연결 실패'; }
+    finally{ clearTimeout(tm); }
+  }
+  return null;
+}
+function legacyCandidates(els){
+ const out=[];
+ for(const e of (els||[])){
+  if(!e.tags)continue;
+  const p=e.type==='node'&&Number.isFinite(e.lat)&&Number.isFinite(e.lon)?[e.lat,e.lon]:
+   e.center&&Number.isFinite(e.center.lat)&&Number.isFinite(e.center.lon)?[e.center.lat,e.center.lon]:
+   e.geometry&&e.geometry.length>2?centroid(ring6(e.geometry)):null;
+  if(!p)continue;
+  const b=matchB(e.tags,p);
+  if(b&&campusPlausible(b,p))out.push({code:b.code,p,id:String(e.type)+':'+e.id});
+ }
+ return out;
+}
+function toRings(els){
+  const bl=[];
+  (els||[]).forEach(e=>{
+    if(!e.tags||!e.tags.building) return;
+    if(e.type==='way'&&e.geometry&&e.geometry.length>2) bl.push({id:'way:'+e.id,t:e.tags,g:ring6(e.geometry)});
+    if(e.type==='relation'&&e.members) e.members.forEach(m=>{ if(m.type==='way'&&m.role!=='inner'&&m.geometry&&m.geometry.length>2) bl.push({id:'way:'+m.ref,t:e.tags,g:ring6(m.geometry)}); });
+  });
+  return bl;
+}
+let osmStat='아직 불러오는 중';
+function applyOSM(data){
+  setOsmB(data.b.concat(tapB));
+  osmPlaces=data.p||[];
+  // 이름이 맞는 건물은 위치 자동 연결 (내가 찍은 핀이 있으면 그게 우선)
+  const matches={};
+  osmB.forEach(o=>{if(o.b&&o.b.code!=='W16'&&o.b.code!=='06'&&campusPlausible(o.b,o.c)){
+    (matches[o.b.code]=matches[o.b.code]||[]).push(o.c);
+  }});
+  // 같은 번호에 서로 다른 윤곽이 매칭되면 어느 것도 자동 확정하지 않는다.
+  B.forEach(b=>{if(!pins[b.code]&&matches[b.code]?.length===1)auto[b.code]=matches[b.code][0];
+    else if(matches[b.code]?.length>1)delete auto[b.code];});
+  saveA();
+  const linked=new Set(osmB.filter(o=>o.b).map(o=>o.b.code)).size;
+  osmStat=`지도 건물 ${osmB.length}개 불러옴 · 우송대 건물 ${linked}/${B.length}곳 연결`;
+  drawBuildings(); drawPins(); drawFac();
+  if(!$('results').hidden) renderList();
+  return linked;
+}
+async function loadOSM(){
+  let data=null;
+  try{ const c=JSON.parse(localStorage.getItem(OSM_KEY)||'null');
+    if(c && c.d && c.d.b && c.d.b.length && Date.now()-c.at<(c.full?7:1)*864e5) data=c.d; }catch(e){}
+  if(data){ applyOSM(data); return; }
+  // 이전 11.17 버전의 OSM 캐시가 있으면 먼저 윤곽을 복원한다.
+  try{
+    const previous=JSON.parse(localStorage.getItem('wsu-osm-v3')||'null');
+    if(previous&&Array.isArray(previous.b)&&previous.b.length){
+      const restored=previous.b.filter(x=>Array.isArray(x.g)&&x.g.length>2).map(x=>({id:String(x.id),t:x.t||{},g:x.g}));
+      applyOSM({b:restored,p:[]});
+    }
+  }catch(e){}
+
+  if(tapB.length) applyOSM({b:[],p:[]});               // 예전에 눌러서 찾은 건물은 먼저 보여주기
+  const e1=await overpass(Q_NAMED);
+  const b1=toRings(e1);
+  // 첫 조회가 실패해도 넓은 이름 검색 및 나머지 조회를 계속 진행한다.
+  data={b:b1,p:[]};
+  if(b1.length){
+    const n=applyOSM(data);
+    toast(`우송대 건물 ${n}곳을 지도에서 바로 누를 수 있어`);
+  } else {
+    osmStat='첫 번째 윤곽 조회 결과 없음 · 추가 검색 중';
+  }
+  // 구버전의 넓은 검색을 복원: 이름이 있는 건물/지점도 후보로 사용.
+  // 같은 번호가 서로 다른 위치에서 발견되면 자동 좌표를 지정하지 않는다.
+  const legacy=await overpass(Q1,30000);
+  if(legacy){
+    data.b=data.b.concat(toRings(legacy));
+    applyOSM(data);
+    const candidates={};
+    for(const v of legacyCandidates(legacy)) (candidates[v.code]??=[]).push(v.p);
+    for(const [code,positions] of Object.entries(candidates)){
+      const b=B.find(x=>x.code===code);
+      if(!b||pins[code]||code==='W16'||code==='06')continue;
+      const distinct=[];
+      for(const pos of positions)if(!distinct.some(x=>roughDistance(x,pos)<35))distinct.push(pos);
+      if(distinct.length===1&&!auto[code]&&campusPlausible(b,distinct[0]))auto[code]=distinct[0];
+    }
+    saveA();drawPins();
+    if(!$('results').hidden)renderList();
+  }
+  const e2=await overpass(Q_SHOPS);
+  if(e2){ data.p=e2.filter(e=>e.type==='node'&&e.tags&&e.tags.name).map(e=>({name:e.tags.name,t:e.tags,ll:[e.lat,e.lon]})); applyOSM(data); }
+  const e3=await overpass(Q_AREA);
+  if(e3){ data.b=data.b.concat(toRings(e3)); applyOSM(data); }
+  if(!data.b.length && !Object.keys(auto).length){
+    osmStat='지도 서버 조회 실패 · 관리자 위치 지정 또는 데이터 가져오기 필요';
+    toast('지도 서버에서 건물 좌표를 가져오지 못했어. 설정에서 위치 데이터를 가져오거나 다시 조회해줘.');
+  }
+  try{ localStorage.setItem(OSM_KEY,JSON.stringify({at:Date.now(),full:!!(e2&&e3),d:data})); }catch(e){}
+}
+
+/* ===== 윤곽이 없는 건물도 지도에서 누르면 그 자리에서 찾기 (OpenStreetMap 역검색) ===== */
+let tapBusy=false, tapAt=0;
+function inPoly(p,g){ let c=false;
+  for(let i=0,j=g.length-1;i<g.length;j=i++){ const a=g[i],b=g[j];
+    if((a[1]>p[1])!==(b[1]>p[1]) && p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0]) c=!c; }
+  return c; }
+function nearestKnown(ll,max){ let best=null,bd=max;
+  B.forEach(b=>{ const p=positionOf(b); if(!p) return; const d=dist(ll,p); if(d<bd){ bd=d; best=b; } });
+  return best; }
+async function tapLookup(ll){
+  if(tapBusy || map.getZoom()<16) return;
+  tapBusy=true;
+  let o=null;
+  try{
+    const wait=1100-(Date.now()-tapAt); if(wait>0) await new Promise(r=>setTimeout(r,wait));   // 1초에 한 번만 조회
+    tapAt=Date.now();
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&polygon_geojson=1&namedetails=1&extratags=1&accept-language=ko&lat=${ll[0]}&lon=${ll[1]}`);
+    const j=await r.json(), gj=j&&j.geojson;
+    let ring=null;
+    if(gj&&gj.type==='Polygon') ring=gj.coordinates[0];
+    else if(gj&&gj.type==='MultiPolygon') ring=gj.coordinates.map(pg=>pg[0]).find(rg=>inPoly(ll,rg.map(c=>[c[1],c[0]])))||null;
+    if(ring&&ring.length>2){
+      const g=ring.map(c=>[+(+c[1]).toFixed(6),+(+c[0]).toFixed(6)]);
+      const la=g.map(x=>x[0]), lo=g.map(x=>x[1]);
+      const diag=dist([Math.min(...la),Math.min(...lo)],[Math.max(...la),Math.max(...lo)]);
+      if(inPoly(ll,g) && diag<320){                    // 누른 점이 그 안에 있고, 캠퍼스 전체 같은 큰 구역이 아닐 때만
+        const nd=j.namedetails||{}, ex=j.extratags||{};
+        const t={name:nd.name||j.name||'','name:ko':nd['name:ko'],'name:en':nd['name:en'],alt_name:nd.alt_name,short_name:nd.short_name,ref:nd.ref||ex.ref};
+        Object.keys(t).forEach(k=>{ if(!t[k]) delete t[k]; });
+        o={t,g,id:j.osm_type&&j.osm_id?`${j.osm_type}:${j.osm_id}`:null};
+      }
+    }
+  }catch(e){}
+  tapBusy=false;
+  if(placing) return;
+  if(o){
+    const c=centroid(o.g); o.c=c; o.b=matchedBuilding(o);
+    if(o.b || o.t.name){                               // 이름 없는 일반 건물은 무시
+      if(!osmB.some(x=>x.c.join(',')===c.join(','))){
+        osmB.push(o); tapB.push({id:o.id,t:o.t,g:o.g}); if(tapB.length>80) tapB=tapB.slice(-80);
+        try{ localStorage.setItem(TAP_KEY,JSON.stringify(tapB)); }catch(e){}
+      }
+      if(o.b && !pins[o.b.code] && o.b.code!=='W16' && o.b.code!=='06' && campusPlausible(o.b,c)){ auto[o.b.code]=c; saveA(); }
+      drawBuildings(); drawFac();
+      if(o.b) openSheet(o.b); else openUnknown(o);
+      return;
+    }
+  }
+  const b=nearestKnown(ll,45);                          // 못 찾으면 가장 가까운 등록 건물 (45m 안)
+  if(b) openSheet(b);
+}
+
+/* ===== 거리/방향 ===== */
+function dist(a,b){ const R=6371000,t=Math.PI/180;
+  const dLa=(b[0]-a[0])*t,dLo=(b[1]-a[1])*t;
+  const h=Math.sin(dLa/2)**2+Math.cos(a[0]*t)*Math.cos(b[0]*t)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h)); }
+function bearing(a,b){ const t=Math.PI/180;
+  const y=Math.sin((b[1]-a[1])*t)*Math.cos(b[0]*t);
+  const x=Math.cos(a[0]*t)*Math.sin(b[0]*t)-Math.sin(a[0]*t)*Math.cos(b[0]*t)*Math.cos((b[1]-a[1])*t);
+  return (Math.atan2(y,x)/t+360)%360; }
+function fmtM(m){ return m>=1000?(m/1000).toFixed(1)+'km':Math.round(m)+'m'; }
+const DIRS=['북','북동','동','남동','남','남서','서','북서'];
+
+/* ===== 건물 시트 ===== */
+let currentBuilding=null;
+function openSheet(b){currentBuilding=b;
+  selected=b.code; drawPins(); $('hint').hidden=true;
+  const p=positionOf(b);
+  $('sCode').textContent=b.code; $('sCode').className='code c-'+b.c;
+  $('sTitle').textContent=b.name;
+  $('sSub').innerHTML = CAMP[b.c] + (p&&me?` · 여기서 직선 <b>${fmtM(dist(me,p))}</b>`:'');
+  $('sDesc').innerHTML=esc(b.sum)+(b.alias?`<small>다른 이름: ${esc(b.alias)}</small>`:''); $('sDesc').hidden=!(b.sum||b.alias);
+  renderInfo(b); $('sItems').hidden=false;
+  let a=`<button class="pri" data-a="go">➜ 여기로 길찾기</button>`;
+  if(adminUnlocked){
+    a+=`<button data-a="here">📍 현재 GPS 위치로 지정</button>`;
+    a+=`<button data-a="move">${pins[b.code]?'📌 위치 오류 수정':'📌 지도에서 위치 지정'}</button>`;
+  }
+  a+=`<div style="grid-column:1/-1;font-size:12px;color:#66736d">위치 상태: ${STATUS_LABEL[positionKind(b)]} · 출입구 위치는 별도 확인 필요</div>`;
+  if(p) map.setView(p,Math.max(map.getZoom(),18));
+  $('sActs').innerHTML=a;
+  $('sActs').querySelectorAll('button').forEach(btn=>btn.onclick=()=>act(b,btn.dataset.a));
+  $('sheet').hidden=false; $('guide').hidden=true; $('compass').hidden=true;
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function renderInfo(b){
+  const groups={};
+  b.items.forEach(x=>{ const f=floorOf(x.room); const k=f==null?(x.room?'etc':'none'):f; (groups[k]=groups[k]||[]).push(x); });
+  const keys=Object.keys(groups).filter(k=>k!=='etc'&&k!=='none').sort((a,b)=>b-a);
+  if(groups.etc) keys.push('etc'); if(groups.none) keys.push('none');
+  const label=k=>k==='etc'?'기타 호실':k==='none'?'층 정보 없음':k+'층';
+  let h='';
+  keys.forEach(k=>{
+    h+=`<div class="fl"><div class="fh">${label(k)}</div>`;
+    groups[k].forEach(x=>{
+      h+=`<div class="it"><div class="itn">${esc(x.n)}${x.mine!=null?' <em>내가 추가</em>':''}</div>`+
+         `<div class="itr">${x.room?`<b>${esc(x.room)}</b>`:''}${x.tel?`<a href="tel:${x.tel}">${x.tel}</a>`:''}`+
+         `${x.mine!=null?`<button class="del" data-i="${x.mine}">삭제</button>`:''}</div></div>`;
+    });
+    h+='</div>';
+  });
+  if(b.fg.length){
+    h+=`<div class="fl"><div class="fh">층별 안내<span class="src">나무위키 기준 · 바뀌었을 수 있어</span></div>`+
+       b.fg.map(([f,t])=>`<div class="fg"><b>${esc(f)}</b><span>${esc(t)}</span></div>`).join('')+'</div>';
+  }
+  if(b.memo.length){
+    h+=`<div class="fl"><div class="fh">위치 메모</div>`+b.memo.map(t=>`<div class="memo">${esc(t)}</div>`).join('')+'</div>';
+  }
+  if(adminUnlocked) h+=`<details class="add"><summary>+ 정보 직접 추가 (강의실, 동아리방 등)</summary>
+      <div class="addf"><input id="addN" placeholder="이름 (예: 창업동아리방)"><input id="addR" placeholder="호실 (예: 512호)"><button id="addB">추가</button></div></details>`;
+  $('sItems').innerHTML=h;
+  $('sItems').querySelectorAll('.del').forEach(btn=>btn.onclick=()=>{if(!adminUnlocked)return;
+    custom[b.code].splice(+btn.dataset.i,1); if(!custom[b.code].length) delete custom[b.code];
+    saveC(); buildInfo(b); renderInfo(b); });
+  if($('addB')) $('addB').onclick=()=>{if(!adminUnlocked)return;
+    const n=$('addN').value.trim(), r=$('addR').value.trim(); if(!n){ $('addN').focus(); return; }
+    (custom[b.code]=custom[b.code]||[]).push({n,room:r&&!/호$/.test(r)?r+'호':r});
+    saveC(); buildInfo(b); renderInfo(b); toast('추가했어. 검색에도 나와.'); };
+}
+function closeSheet(){ $('sheet').hidden=true; if(!target) selected=null; drawPins(); if(target){ $('guide').hidden=false; updateGuide(); paintCompass(); } }
+$('sheetX').onclick=closeSheet;
+
+function act(b,a){
+  if(a==='go') startGuide(b);
+  if((a==='here'||a==='move')&&!adminUnlocked){toast('관리자 인증이 필요해');return;}
+  if(a==='here'){ if(!me){ toast('아직 GPS를 못 잡았어. 잠깐만 기다려줘.'); return; } setPin(b.code,[...me]); }
+  if(a==='move'){ placing=b.code; $('sheet').hidden=true; showBanner(`${b.name} 위치를 지도에서 탭해줘`); }
+}
+function setPin(code,ll){
+  if(!adminUnlocked){ placing=null; toast('관리자 인증이 필요해'); return; }
+  if(!coordinateOK(ll)){toast('우송대 주변 좌표가 아니야. 다시 지정해줘.');return;}
+  const b=B.find(x=>x.code===code);
+  if(!b||!campusPlausible(b,ll)){toast('해당 캠퍼스 범위 밖이야. 위치를 다시 확인해줘.');return;}
+  const old=positionOf(b);
+  if(old && dist(old,ll)>350 && !confirm('기존 위치에서 350m 이상 떨어져 있어. 이 좌표로 변경할까?'))return;
+  pins[code]=[+ll[0].toFixed(6),+ll[1].toFixed(6)]; pinSources[code]='admin';save();savePinSources();
+  placing=null; $('banner').hidden=true;drawPins();drawFac(false);
+  if(target&&target.code===code){ startGuide(b); toast('위치 저장했어. 경로 다시 계산할게.'); }
+  else openSheet(b);
+}
+function showBanner(t){ $('bannerTxt').textContent=t; $('bannerCancel').hidden=false; $('banner').hidden=false; }
+$('bannerCancel').onclick=()=>{ placing=null; $('banner').hidden=true; };
+function toast(t){ $('bannerTxt').textContent=t; $('bannerCancel').hidden=true; $('banner').hidden=false; setTimeout(()=>{ if(!placing) $('banner').hidden=true; },2500); }
+
+/* ===== 길 안내 ===== */
+/* 흐름: 검색에서 건물 선택 → 내 GPS 위치 확인 → 목적지 좌표 찾기 → 도보 경로 계산 → 따라가며 안내 */
+let dest=null, destSrc='', route=null, stepIdx=0, routing=false, lastRouteAt=0, guideToken=0;
+const BBOX='127.415,36.355,127.475,36.320';   // 우송대·대전역 주변
+
+async function findDest(b){
+  if(b.ll) return coordinateOK(b.ll)?{ll:b.ll,src:'osm'}:null;
+  const ll=positionOf(b);
+  if(!ll)return null; // 무작위 이름 검색 결과를 건물 위치로 저장하지 않음
+  const kind=positionKind(b);
+  return {ll,src:kind==='admin'?'pin':kind==='reference'?'reference':'osm'};
+}
+
+async function startGuide(b){
+  const my=++guideToken;
+  target=b; arrived=false; route=null; stepIdx=0; dest=null; clearRoute();
+  $('sheet').hidden=true; $('results').hidden=true; selected=b.code; drawPins();
+  $('gName').textContent=`${b.code?b.code+' ':''}${b.name}까지`; $('guide').hidden=false; $('guide').classList.remove('done');
+  $('arrow').textContent='↑'; $('gDist').textContent='…'; $('gNext').hidden=true; $('gFoot').innerHTML='';
+  askCompass();
+  $('gMeta').textContent='목적지 위치 찾는 중…';
+  const f=await findDest(b);
+  if(my!==guideToken) return;
+  if(!f){
+    const q=encodeURIComponent((b.code==='06'?'':'우송대학교 ')+b.name);
+    $('gDist').textContent='위치 없음';
+    $('gMeta').textContent='지도에 이 건물 좌표가 없어. 정보 → 위치 등록하거나 카카오맵으로 가줘.';
+    $('gFoot').innerHTML=`<a href="https://map.kakao.com/link/search/${q}" target="_blank" rel="noopener">카카오맵에서 길찾기</a>`;
+    return;
+  }
+  dest=f.ll; destSrc=f.src; drawPins(); drawDest();
+  if(me) map.fitBounds([me,dest],{padding:[110,60],maxZoom:18}); else map.setView(dest,18);
+  await makeRoute();
+  updateGuide();
+}
+
+let destMarker=null, routeLine=null;
+function drawDest(){
+  if(destMarker) map.removeLayer(destMarker);
+  if(!dest) return;
+  if(!pins[target.code]) destMarker=L.circleMarker(dest,{radius:9,color:'#fff',weight:3,fillColor:'#d93a2f',fillOpacity:1}).addTo(map);
+}
+function clearRoute(){
+  [routeLine,guideLine,destMarker].forEach(l=>{ if(l) map.removeLayer(l); });
+  routeLine=guideLine=destMarker=null;
+}
+
+/* 도보 경로 (OpenStreetMap 보행자 길) */
+async function makeRoute(){
+  if(!me||!dest||routing) return;
+  routing=true; lastRouteAt=Date.now();
+  const my=guideToken;
+  try{
+    const u=`https://routing.openstreetmap.de/routed-foot/route/v1/driving/${me[1]},${me[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson&steps=true`;
+    const j=await (await fetch(u)).json();
+    if(my!==guideToken) return;
+    const r=j.routes&&j.routes[0];
+    if(r){
+      route={
+        pts:r.geometry.coordinates.map(c=>[c[1],c[0]]),
+        steps:r.legs[0].steps.slice(1).map(s=>({ll:[s.maneuver.location[1],s.maneuver.location[0]],txt:turnTxt(s)}))
+      };
+      stepIdx=0;
+      if(routeLine) map.removeLayer(routeLine);
+      routeLine=L.polyline(route.pts,{color:'#d93a2f',weight:6,opacity:.9,lineCap:'round',lineJoin:'round'}).addTo(map);
+      if(guideLine){ map.removeLayer(guideLine); guideLine=null; }
+    }
+  }catch(e){ route=null; }
+  finally{ routing=false; }
+  footLinks();
+}
+function turnTxt(s){
+  const m=s.maneuver, mod=m.modifier||'';
+  if(m.type==='arrive') return '도착';
+  const T={'left':'좌회전','right':'우회전','slight left':'왼쪽으로','slight right':'오른쪽으로','sharp left':'크게 좌회전','sharp right':'크게 우회전','straight':'직진','uturn':'유턴'};
+  const road=s.name?` (${s.name})`:'';
+  return (T[mod]||'계속 이동')+road;
+}
+function footLinks(){
+  if(!dest) return;
+  const nm=encodeURIComponent(target.name);
+  const k = me ? `https://map.kakao.com/link/by/walk/내위치,${me[0]},${me[1]}/${nm},${dest[0]},${dest[1]}`
+               : `https://map.kakao.com/link/to/${nm},${dest[0]},${dest[1]}`;
+  $('gFoot').innerHTML=(destSrc==='osm'?'<span>📌 위치: OSM 건물 윤곽 추정 · 출입구 미확인</span>':destSrc==='reference'?'<span>📌 위치: 공개자료 근사 · 출입구 미확인</span>':'')+`<a href="${k}" target="_blank" rel="noopener">카카오맵 도보 길찾기</a>`;
+}
+
+function stopGuide(){ guideToken++; target=null; selected=null; dest=null; route=null; $('guide').hidden=true; $('compass').hidden=true; clearRoute(); drawPins(); }
+$('gStop').onclick=stopGuide;
+$('gInfoBtn').onclick=()=>{ if(!target) return; if(target.isPlace){ if(target.pl) openPlace(target.pl); } else openSheet(target); };
+
+function nearestIdx(pts,p){ let bi=0,bd=Infinity; pts.forEach((q,i)=>{ const d=dist(p,q); if(d<bd){bd=d;bi=i;} }); return [bi,bd]; }
+
+function updateGuide(){
+  if(!target||!dest) return;
+  if(!me){ $('gDist').textContent='–'; $('gMeta').textContent='내 위치 GPS 찾는 중…'; return; }
+  if(!route && !routing && Date.now()-lastRouteAt>15000) makeRoute();
+  let remain, aim;
+  if(route){
+    const [i,off]=nearestIdx(route.pts,me);
+    if(off>40 && !routing && Date.now()-lastRouteAt>10000){ makeRoute(); }   // 길에서 벗어나면 다시 계산
+    remain=dist(me,route.pts[i]);
+    for(let k=i;k<route.pts.length-1;k++) remain+=dist(route.pts[k],route.pts[k+1]);
+    // 화살표는 경로상 25m 앞 지점을 가리킴
+    let acc=0, j=i; while(j<route.pts.length-1 && acc<25){ acc+=dist(route.pts[j],route.pts[j+1]); j++; }
+    aim=route.pts[j];
+    while(stepIdx<route.steps.length-1 && dist(me,route.steps[stepIdx].ll)<15) stepIdx++;
+    const s=route.steps[stepIdx];
+    if(s && s.txt!=='도착'){ $('gNext').hidden=false; $('gNext').textContent=`${fmtM(dist(me,s.ll))} 후 ${s.txt}`; }
+    else $('gNext').hidden=true;
+  } else {
+    remain=dist(me,dest); aim=dest; $('gNext').hidden=true;
+    if(guideLine) guideLine.setLatLngs([me,dest]); else guideLine=L.polyline([me,dest],{color:'#d93a2f',weight:5,dashArray:'2 10',lineCap:'round'}).addTo(map);
+  }
+  const br=bearing(me,dest);   // 화살표는 항상 목적지 방향을 가리킴
+  paintCompass();
+  if(dist(me,dest)<15){
+    $('guide').classList.add('done'); rotateTo($('arrow'),0); $('arrow').textContent='✓';
+    $('gDist').textContent='도착!'; $('gNext').hidden=true; $('gMeta').textContent=`${target.name} 근처야`;
+    if(!arrived && navigator.vibrate) navigator.vibrate(200); arrived=true;
+  } else {
+    $('guide').classList.remove('done'); $('arrow').textContent='↑';
+    rotateTo($('arrow'),heading==null?br:br-heading);
+    $('gDist').textContent=fmtM(remain);
+    $('gMeta').textContent=(route?'도보 경로':'직선 거리 (경로 못 불러옴)')+` · 약 ${Math.max(1,Math.round((route?remain:remain*1.3)/75))}분`;
+  }
+}
+
+/* ===== 나침반 ===== */
+let compassOn=false, hasCompass=false, lastPaint=0;
+function setHeading(h){
+  const scr=(screen.orientation&&screen.orientation.angle)||window.orientation||0;   // 가로모드 보정
+  heading=(h+scr+360)%360; hasCompass=true;
+  const now=Date.now(); if(now-lastPaint>80){ lastPaint=now; updateGuide(); }        // 너무 자주 그리지 않게
+}
+function askCompass(){                            // 반드시 버튼 탭 안에서 호출 (아이폰 권한 때문)
+  if(compassOn) return;
+  const ios=e=>{ if(e.webkitCompassHeading!=null) setHeading(e.webkitCompassHeading); };
+  const abs=e=>{ if(e.alpha!=null) setHeading(360-e.alpha); };
+  if(typeof DeviceOrientationEvent!=='undefined' && DeviceOrientationEvent.requestPermission){
+    DeviceOrientationEvent.requestPermission().then(r=>{
+      if(r==='granted'){ compassOn=true; window.addEventListener('deviceorientation',ios); }
+      updateGuide();
+    }).catch(()=>{ updateGuide(); });
+  } else {
+    compassOn=true;
+    if('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute',abs);
+    else window.addEventListener('deviceorientation',e=>{ if(e.absolute) abs(e); });
+  }
+}
+$('cCal').onclick=()=>{ compassOn=false; askCompass(); };
+
+/* 나침반 바늘: 359°→1°로 넘어갈 때 한 바퀴 돌지 않게 */
+const rotState={};
+function rotateTo(el,deg){
+  const prev=rotState[el.id]??deg;
+  let d=((deg-prev)%360+540)%360-180;
+  rotState[el.id]=prev+d;
+  el.style.transform=`rotate(${rotState[el.id]}deg)`;
+}
+
+/* 방향 안내 화면 */
+let compassView=true;
+$('gView').onclick=()=>{ compassView=!compassView; $('gView').textContent=compassView?'지도':'방향'; updateGuide(); };
+function paintCompass(){
+  const show = target && dest && compassView && $('sheet').hidden;
+  $('compass').hidden=!show;
+  if(!show) return;
+  if(!me){ $('cDist').textContent='–'; $('cTurn').textContent='내 위치 찾는 중…'; $('cSub').textContent=''; return; }
+  const d=dist(me,dest), br=bearing(me,dest);
+  $('cTo').textContent=target.name;
+  $('cDist').textContent=fmtM(d);
+  const box=$('compass');
+  if(d<15){ box.classList.add('done'); $('cTurn').textContent='도착했어!'; $('cSub').textContent=''; rotateTo($('needle'),0); return; }
+  box.classList.remove('done');
+  if(heading==null){
+    rotateTo($('needle'),br);
+    $('cTurn').className='cturn';
+    $('cTurn').textContent=`${DIRS[Math.round(br/45)%8]}쪽으로 가`;
+    $('cSub').textContent='폰 방향을 몰라서 화살표가 지도 기준(위=북쪽)이야';
+    $('cCal').hidden=false;
+    return;
+  }
+  $('cCal').hidden=true;
+  const rel=((br-heading)%360+540)%360-180;          // -180 ~ 180, +면 오른쪽
+  rotateTo($('needle'),rel);
+  const a=Math.abs(Math.round(rel));
+  let t;
+  if(a<=15) t='이대로 직진';
+  else if(a>=150) t='뒤로 돌아';
+  else t=(rel>0?'오른쪽':'왼쪽')+`으로 ${a}° 돌아`;
+  $('cTurn').textContent=t; $('cTurn').className='cturn'+(a<=15?' ok':'');
+  $('cSub').textContent=`목적지는 ${DIRS[Math.round(br/45)%8]}쪽 · 직선 거리${hasCompass?'':' (이동 방향 기준)'}`;
+}
+
+/* ===== GPS ===== */
+$('btnFollow').onclick=()=>{ follow=true; $('btnFollow').classList.add('on'); if(me) map.setView(me,Math.max(map.getZoom(),18)); };
+$('btnCampus').onclick=()=>{ follow=false; $('btnFollow').classList.remove('on'); map.setView(CENTER,17); };
+map.on('dragstart',()=>{ follow=false; $('btnFollow').classList.remove('on'); });
+
+if(!('geolocation' in navigator)) $('gps').textContent='GPS 미지원';
+else navigator.geolocation.watchPosition(pos=>{
+  me=[pos.coords.latitude,pos.coords.longitude];
+  const acc=Math.round(pos.coords.accuracy);
+  // 나침반 센서가 없으면 걷는 방향(GPS 이동 방향)으로 대신
+  if(!hasCompass && pos.coords.heading!=null && !isNaN(pos.coords.heading) && (pos.coords.speed||0)>0.7) heading=pos.coords.heading;
+  if(!meMarker){
+    meMarker=L.marker(me,{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[24,24]}),zIndexOffset:1000}).addTo(map);
+    meCircle=L.circle(me,{radius:acc,color:'#2b7cff',weight:1,fillOpacity:.12}).addTo(map);
+  } else { meMarker.setLatLng(me); meCircle.setLatLng(me).setRadius(acc); }
+  $('gps').textContent='정확도 ±'+acc+'m'; $('gps').className='gps ok';
+  if(follow && !target) map.setView(me,Math.max(map.getZoom(),18));
+  updateGuide();
+},err=>{ $('gps').textContent = err.code===1?'위치 권한 꺼짐':'GPS 신호 없음'; $('gps').className='gps'; },
+{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+
+/* ===== 백업 / 불러오기 ===== */
+function backupPayload(){return {version:2,exportedAt:new Date().toISOString(),pins,custom,pinSources,outlineLinks};}
+$('btnData').onclick=()=>{ if(!adminUnlocked){toast('관리자 인증이 필요해');return;}  $('dataTxt').value=JSON.stringify(backupPayload(),null,2); $('osmStat').textContent=osmStat; $('modal').hidden=false; };
+$('dataClose').onclick=()=>$('modal').hidden=true;
+$('dataExport').onclick=()=>{
+ if(!adminUnlocked)return;
+ const blob=new Blob([JSON.stringify(backupPayload(),null,2)],{type:'application/json;charset=utf-8'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+ a.download='ieum-map-locations-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+ toast('위치 데이터 JSON 저장 완료');
+};
+$('dataCopy').onclick=()=>{ const t=$('dataTxt'); t.select();
+  (navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>toast('복사했어')).catch(()=>{ try{document.execCommand('copy');}catch(e){} toast('복사했어'); }); };
+$('dataLoad').onclick=()=>{ if(!adminUnlocked)return; try{ const raw=JSON.parse($('dataTxt').value);
+    const o = raw.pins ? raw.pins : raw;              // 예전 백업(핀만 있는 형식)도 받기
+    Object.keys(o).forEach(k=>{const b=B.find(x=>x.code===k);if(b&&coordinateOK(o[k])){pins[k]=o[k];pinSources[k]='admin'}});savePinSources();
+    if(raw.custom) Object.keys(raw.custom).forEach(k=>{ if(Array.isArray(raw.custom[k])) custom[k]=raw.custom[k]; });
+    if(raw.outlineLinks && typeof raw.outlineLinks==='object')Object.keys(raw.outlineLinks).forEach(k=>{if(B.some(b=>b.code===k))outlineLinks[k]=raw.outlineLinks[k]});
+    saveOutlineLinks();
+    save(); saveC(); cloudQueueSync(); B.forEach(buildInfo); drawPins(); $('modal').hidden=true; toast('불러왔어'); }
+  catch(e){ toast('형식이 잘못됐어. 복사한 내용 그대로 붙여넣어줘.'); } };
+
+/* ===== 첫 사용 안내 ===== */
+let hintOff=false; try{ hintOff=localStorage.getItem(HINTKEY)==='1'; }catch(e){}
+if(!hintOff) $('hint').hidden=false;
+$('btnReference').onclick=()=>{$('refModal').hidden=false};
+$('refClose').onclick=()=>{$('refModal').hidden=true};
+$('refModal').addEventListener('click',e=>{if(e.target===$('refModal'))$('refModal').hidden=true});
+$('hintX').onclick=()=>{ $('hint').hidden=true; try{ localStorage.setItem(HINTKEY,'1'); }catch(e){} };
+
+/* Supabase Auth 인증 + 서버 RLS. 프론트엔드에 관리자 비밀번호를 넣지 않는다. */
+let adminUnlocked=false;
+let cloudToken=null,cloudRefresh=null,cloudTimer=null,cloudSyncTimer=null,cloudBusy=false,cloudPending=false,cloudRevision=0;
+const CLOUD=window.IEUM_CLOUD||{};
+const cloudReady=()=>/^https:\/\//.test(CLOUD.url||'')&&typeof CLOUD.anonKey==='string'&&CLOUD.anonKey.length>20&&!CLOUD.url.includes('YOUR_PROJECT')&&!CLOUD.anonKey.includes('YOUR_');
+const cloudHeaders=(auth=false)=>({'apikey':CLOUD.anonKey,'Content-Type':'application/json',...(auth&&cloudToken?{'Authorization':'Bearer '+cloudToken}:{})});
+async function cloudRequest(path,opts={}){
+ const r=await fetch(CLOUD.url.replace(/\/$/,'')+path,{...opts,headers:{...cloudHeaders(!!opts.auth),...(opts.headers||{})}});
+ const body=await r.text();let data;try{data=body?JSON.parse(body):null}catch(e){data=body}
+ if(!r.ok)throw Error((data&&data.message)||(data&&data.error_description)||(data&&data.error)||'HTTP '+r.status);
+ return data;
+}
+function cloudApply(data){
+ if(!data||typeof data!=='object')return;
+ const clean={};for(const [k,v] of Object.entries(data.pins||{})){if(B.some(b=>b.code===k)&&coordinateOK(v))clean[k]=v}
+ pins=clean;pinSources=data.pinSources&&typeof data.pinSources==='object'?data.pinSources:{};
+ custom=data.custom&&typeof data.custom==='object'?data.custom:{};
+ outlineLinks=data.outlineLinks&&typeof data.outlineLinks==='object'?data.outlineLinks:{};
+ try{localStorage.setItem(KEY,JSON.stringify(pins));localStorage.setItem(KEYC,JSON.stringify(custom));localStorage.setItem(PIN_SOURCE_KEY,JSON.stringify(pinSources));localStorage.setItem(OUTLINE_KEY,JSON.stringify(outlineLinks))}catch(e){}
+ drawPins();drawBuildings();drawFac(false);
+}
+async function cloudPull(){
+ if(!cloudReady()||cloudBusy||cloudPending)return;
+ try{const rows=await cloudRequest('/rest/v1/map_state?id=eq.main&select=payload,revision');
+  if(rows&&rows[0]&&rows[0].revision>cloudRevision){cloudRevision=rows[0].revision;cloudApply(rows[0].payload)}
+ }catch(e){console.warn('Cloud read:',e.message)}
+}
+function cloudQueueSync(){
+ if(!cloudReady()||!adminUnlocked||!cloudToken)return;
+ cloudPending=true;clearTimeout(cloudSyncTimer);cloudSyncTimer=setTimeout(cloudPush,650);
+}
+async function cloudPush(){
+ if(!adminUnlocked||!cloudToken||cloudBusy)return;
+ cloudBusy=true;cloudPending=false;
+ try{
+  const payload={pins:structuredClone(pins),pinSources:structuredClone(pinSources),custom:structuredClone(custom),outlineLinks:structuredClone(outlineLinks)};
+  const result=await cloudRequest('/rest/v1/rpc/save_map_state',{method:'POST',auth:true,body:JSON.stringify({new_payload:payload})});
+  if(typeof result==='number')cloudRevision=Math.max(cloudRevision,result);
+  toast('☁️ 모든 학생 지도에 저장했어');
+ }catch(e){cloudPending=true;console.error('Cloud save:',e);alert('클라우드 저장 실패: '+e.message+'\n로컬에만 저장되었으니 다시 시도해 줘.');}
+ finally{cloudBusy=false}
+}
+function cloudLock(){adminUnlocked=false;cloudToken=null;cloudRefresh=null;placing=null;clearTimeout(cloudSyncTimer);$('banner').hidden=true;$('btnData').hidden=true;$('btnAudit').hidden=true;$('auditModal').hidden=true;$('adminBtn').textContent='🔒 관리자';$('sheet').hidden=true;toast('관리자 잠금')}
+$('adminBtn').onclick=()=>{
+ if(adminUnlocked){cloudLock();return}
+ if(!cloudReady()){alert('cloud-config.js에 Supabase URL과 anon key를 먼저 입력해 줘. README를 참고해.');return}
+ $('cloudModal').hidden=false;$('cloudStatus').textContent='관리자 계정으로 로그인해 줘.';
+};
+$('cloudCancel').onclick=()=>{$('cloudModal').hidden=true};
+$('cloudLogin').onclick=async()=>{
+ const email=$('cloudEmail').value.trim(),password=$('cloudPassword').value;
+ if(!email||!password){$('cloudStatus').textContent='이메일과 비밀번호를 입력해 줘.';return}
+ $('cloudLogin').disabled=true;$('cloudStatus').textContent='로그인 중...';
+ try{
+  const session=await cloudRequest('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
+  cloudToken=session.access_token;cloudRefresh=session.refresh_token;
+  const allowed=await cloudRequest('/rest/v1/admin_users?user_id=eq.'+encodeURIComponent(session.user.id)+'&select=user_id',{auth:true});
+  if(!Array.isArray(allowed)||allowed.length===0)throw Error('관리자 권한이 없는 계정이야.');
+  adminUnlocked=true;$('btnData').hidden=false;$('btnAudit').hidden=false;$('adminBtn').textContent='🔓 잠금';$('cloudModal').hidden=true;$('cloudPassword').value='';toast('클라우드 관리자 로그인 완료');
+  await cloudPull();
+ }catch(e){cloudToken=null;$('cloudStatus').textContent='로그인 실패: '+e.message}
+ finally{$('cloudLogin').disabled=false}
+};
+async function cloudRefreshSession(){if(!adminUnlocked||!cloudRefresh)return;
+ try{const session=await cloudRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:cloudRefresh})});cloudToken=session.access_token;cloudRefresh=session.refresh_token}catch(e){cloudLock()}
+}
+if(cloudReady()){cloudPull();cloudTimer=setInterval(cloudPull,8000);setInterval(cloudRefreshSession,45*60*1000)}
+/* ===== 관리자 전용 42개 건물 위치 점검표 ===== */
+function auditRecords(){return B.map(b=>({b,kind:positionKind(b),p:positionOf(b)}))}
+function renderAudit(){
+  const records=auditRecords(),count=k=>records.filter(x=>x.kind===k).length;
+  $('auditSummary').textContent=`전체 ${B.length}곳 · 관리자 지정 ${count('admin')} · 공개자료 근사 ${count('reference')} · OSM 자동 ${count('osm')} · 좌표 없음 ${count('missing')} · 위치 이상 ${count('invalid')}`;
+  $('auditRows').innerHTML=records.map(({b,kind,p})=>`<button class="auditRow" data-code="${b.code}"><span><b>${b.code} ${esc(b.name)}</b><small>${esc(CAMP[b.c])}${p?' · '+p[0].toFixed(6)+', '+p[1].toFixed(6):''}</small></span><span class="status ${kind==='invalid'?'bad':kind==='admin'?'good':''}">${STATUS_LABEL[kind]}</span></button>`).join('');
+  $('auditRows').querySelectorAll('[data-code]').forEach(row=>row.onclick=()=>{
+    if(!adminUnlocked)return;
+    const b=B.find(b=>b.code===row.dataset.code);
+    $('auditModal').hidden=true;openSheet(b);
+  });
+}
+$('btnAudit').onclick=()=>{if(!adminUnlocked)return;renderAudit();$('auditModal').hidden=false};
+$('auditClose').onclick=()=>{$('auditModal').hidden=true};
+$('auditRefresh').onclick=()=>{
+  if(!adminUnlocked)return;
+  if(!confirm('자동 추정 좌표와 윤곽 캐시를 초기화하고 다시 조회할까? 관리자 지정 좌표는 유지돼.'))return;
+  auto={};saveA();try{localStorage.removeItem(OSM_KEY);localStorage.removeItem(TAP_KEY)}catch(e){}
+  tapB=[];osmB=[];drawBuildings();drawPins();renderAudit();loadOSM();toast('OSM 윤곽을 다시 불러오는 중이야');
+};
+$('auditExport').onclick=()=>{
+  if(!adminUnlocked)return;
+  const lines=['번호\t건물명\t구역\t위치상태\t위도\t경도',...auditRecords().map(({b,kind,p})=>[b.code,b.name,CAMP[b.c],STATUS_LABEL[kind],p?.[0]??'',p?.[1]??''].join('\t'))].join('\n');
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(lines).then(()=>toast('점검표 복사 완료')).catch(()=>toast('복사 실패'));
+  else{const t=document.createElement('textarea');t.value=lines;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();toast('점검표 복사 완료')}
+};
+/* UI language: local dictionary, no external translation service. */
+const LANG_KEY='ieum-display-language-v1';
+const UI_TRANSLATIONS={
+ en:{'우송대 캠퍼스 지도':'Woosong Campus Map','🔒 관리자':'🔒 Admin','🔓 잠금':'🔓 Lock','전체':'All','서캠':'West','동캠':'East','캠퍼스 밖':'Off campus','GPS 찾는 중':'Locating GPS','백업':'Backup','JSON 내보내기':'Export JSON','학교':'Campus','내 위치':'My location','지도':'Map','정보':'Details','종료':'Stop','취소':'Cancel','이렇게 쓰면 돼':'How to use','위에서 건물·학과 검색 (예: 간호, 예비군)':'Search buildings or departments above','결과를 누르면':'Select a result to','내 위치에서 바로 길찾기':'navigate from your location','지도에서':'On the map,','건물을 직접 눌러도':'tap a building','정보가 떠':'to see details','🍚☕🏪 버튼 누르면 식당·카페·편의점 위치가 지도에 보여':'Use 🍚☕🏪 to show food, cafes and stores','식당':'Dining','카페':'Cafe','편의점':'Convenience','ATM·은행':'ATM / Bank','증명서·우편':'Documents / Mail','헬스':'Fitness','도서관·서점':'Library / Books','위치 백업 · 공유':'Backup & share locations','복사':'Copy','불러오기':'Import','닫기':'Close','등록됨':'Saved','미등록':'No location','관리자 비밀번호':'Admin password','관리자 모드 활성화':'Admin mode enabled','관리자 잠금':'Admin locked','비밀번호가 올바르지 않습니다.':'Incorrect password.'},
+ ja:{'우송대 캠퍼스 지도':'ウソン大学キャンパスマップ','🔒 관리자':'🔒 管理者','🔓 잠금':'🔓 ロック','전체':'すべて','서캠':'西キャンパス','동캠':'東キャンパス','캠퍼스 밖':'キャンパス外','GPS 찾는 중':'現在地を取得中','백업':'バックアップ','학교':'大学','내 위치':'現在地','지도':'地図','정보':'詳細','종료':'終了','취소':'キャンセル','이렇게 쓰면 돼':'使い方','위에서 건물·학과 검색 (예: 간호, 예비군)':'上部で建物・学科を検索','결과를 누르면':'結果を選ぶと','내 위치에서 바로 길찾기':'現在地から経路案内','지도에서':'地図上の','건물을 직접 눌러도':'建物をタップすると','정보가 떠':'詳細を表示','🍚☕🏪 버튼 누르면 식당·카페·편의점 위치가 지도에 보여':'🍚☕🏪で飲食店などを表示','식당':'食堂','카페':'カフェ','편의점':'コンビニ','ATM·은행':'ATM・銀行','증명서·우편':'証明書・郵便','헬스':'フィットネス','도서관·서점':'図書館・書店','위치 백업 · 공유':'位置データの保存・共有','복사':'コピー','불러오기':'読み込み','닫기':'閉じる','등록됨':'登録済み','미등록':'未登録','관리자 비밀번호':'管理者パスワード','관리자 모드 활성화':'管理者モード有効','관리자 잠금':'管理者ロック','비밀번호가 올바르지 않습니다.':'パスワードが違います。'},
+ zh:{'우송대 캠퍼스 지도':'又松大学校园地图','🔒 관리자':'🔒 管理员','🔓 잠금':'🔓 锁定','전체':'全部','서캠':'西校区','동캠':'东校区','캠퍼스 밖':'校外','GPS 찾는 중':'正在定位','백업':'备份','학교':'学校','내 위치':'我的位置','지도':'地图','정보':'详情','종료':'结束','취소':'取消','이렇게 쓰면 돼':'使用方法','위에서 건물·학과 검색 (예: 간호, 예비군)':'在上方搜索建筑或院系','결과를 누르면':'选择结果后','내 위치에서 바로 길찾기':'从当前位置导航','지도에서':'在地图上','건물을 직접 눌러도':'点击建筑','정보가 떠':'查看详情','🍚☕🏪 버튼 누르면 식당·카페·편의점 위치가 지도에 보여':'点击🍚☕🏪显示餐饮和商店','식당':'食堂','카페':'咖啡馆','편의점':'便利店','ATM·은행':'ATM・银行','증명서·우편':'证明・邮政','헬스':'健身','도서관·서점':'图书馆・书店','위치 백업 · 공유':'备份和共享位置','복사':'复制','불러오기':'导入','닫기':'关闭','등록됨':'已登记','미등록':'未登记','관리자 비밀번호':'管理员密码','관리자 모드 활성화':'管理员模式已开启','관리자 잠금':'管理员已锁定','비밀번호가 올바르지 않습니다.':'密码错误。'}
+};
+/* Building, off-campus and indoor facility translations. Unmatched proper nouns remain Korean. */
+const PLACE_GLOSSARY={
+ '우송도서관':['Woosong Library','ウソン図書館','又松图书馆'], '산학협력관':['Industry-Academia Cooperation Building','産学協力館','产学合作楼'],
+ '학군단':['ROTC Building','学軍団','学军团'], '유학생기숙사':['International Student Dormitory','留学生寮','留学生宿舍'],
+ '철도물류관':['Railway & Logistics Building','鉄道物流館','铁路物流楼'], '보건의료과학관':['Health Sciences Building','保健医療科学館','保健医疗科学楼'],
+ '교양교육관':['General Education Building','教養教育館','通识教育楼'], '우송관':['Woosong Hall','ウソン館','又松馆'],
+ '우송유치원':['Woosong Kindergarten','ウソン幼稚園','又松幼儿园'], '정례원':['Jeongryewon','ジョンレウォン','正礼院'],
+ '사회복지융합관':['Social Welfare Building','社会福祉融合館','社会福利融合楼'], '체육관':['Gymnasium','体育館','体育馆'],
+ '우송타워':['Woosong Tower','ウソンタワー','又松塔'], '식품건축관':['Food & Architecture Building','食品建築館','食品建筑楼'],
+ '학생회관':['Student Center','学生会館','学生活动中心'], '미디어융합관':['Media Convergence Building','メディア融合館','媒体融合楼'],
+ '우송예술회관':['Woosong Arts Center','ウソン芸術会館','又松艺术中心'],
+ '테크노디자인센터':['Techno Design Center','テクノデザインセンター','科技设计中心'],
+ '국제경영센터':['International Business Center','国際経営センター','国际经营中心'],
+ '학술정보관':['Academic Information Center','学術情報館','学术信息馆'], '구 대학본부':['Former Administration Building','旧大学本部','原大学行政楼'],
+ '자립관':['Jarip Dormitory','自立館','自立馆'], '청솔관':['Cheongsol Dormitory','青松館','青松馆'],
+ '단정관':['Danjeong Dormitory','端正館','端正馆'], '독행관':['Dokhaeng Dormitory','独行館','独行馆'],
+ '크로톤빌센터':['Crotonville Center','クロトンビルセンター','克罗顿维尔中心'],
+ '우송어학센터':['Woosong Language Center','ウソン語学センター','又松语言中心'],
+ '우송IT교육센터':['Woosong IT Education Center','ウソンIT教育センター','又松IT教育中心'],
+ '우송뷰티센터':['Woosong Beauty Center','ウソンビューティーセンター','又松美容中心'],
+ '우송애견센터':['Woosong Pet Center','ウソンペットセンター','又松宠物中心'],
+ '우송오토센터':['Woosong Auto Center','ウソン自動車センター','又松汽车中心'],
+ '대전화병원':['Daejeon Hwa Hospital','大田華病院','大田华医院'],
+ '솔브릿지국제경영대학':['SolBridge International School of Business','ソルブリッジ国際経営大学','SolBridge国际商学院'],
+ '학생식당':['Student Cafeteria','学生食堂','学生食堂'], '교직원식당':['Faculty & Staff Cafeteria','教職員食堂','教职工食堂'],
+ '편의점':['Convenience Store','コンビニ','便利店'], '구내서점':['Campus Bookstore','学内書店','校内书店'],
+ '우편 취급국':['Post Office','郵便取扱所','邮政服务点'], '학생복지처':['Student Welfare Office','学生福祉課','学生福利处'],
+ '학생상담센터':['Student Counseling Center','学生相談センター','学生咨询中心'],
+ '장애학생지원센터':['Disability Support Center','障害学生支援センター','残障学生支持中心'],
+ '동아리방':['Club Room','サークル室','社团活动室'], '취업지원센터':['Career Center','就職支援センター','就业支持中心'],
+ '한국어교육원':['Korean Language Institute','韓国語教育院','韩国语教育院'],
+ '자동증명발급기':['Certificate Kiosk','証明書自動発行機','自助证明打印机'],
+ '현금인출기':['ATM','ATM','自动取款机'], '무인 출력기':['Self-Service Printer','セルフ印刷機','自助打印机'],
+ '기숙사':['Dormitory','寮','宿舍'], '도서관':['Library','図書館','图书馆'], '강의실':['Classroom','講義室','教室'],
+ '학과':['Department','学科','系'], '전공':['Major','専攻','专业'], '센터':['Center','センター','中心'],
+ '사무실':['Office','事務室','办公室'], '회의실':['Meeting Room','会議室','会议室'], '실습실':['Practice Room','実習室','实训室'],
+ '층별 안내':['Floor Guide','フロア案内','楼层指南'], '위치 메모':['Location Notes','位置メモ','位置备注'],
+ '층 정보 없음':['Floor Not Specified','階情報なし','楼层未知'], '기타 호실':['Other Rooms','その他の部屋','其他房间'],
+ '서캠':['West Campus','西キャンパス','西校区'], '동캠':['East Campus','東キャンパス','东校区']
+};
+function localizePlace(value){
+ if(value==null)return '';
+ let original=String(value);
+ for(const [ko,arr] of Object.entries(PLACE_GLOSSARY).sort((a,b)=>b[0].length-a[0].length))for(const translated of arr)if(translated!==ko)original=original.split(translated).join(ko);
+ if(appLang==='ko')return original;
+ const idx={en:0,ja:1,zh:2}[appLang];
+ let result=original;
+ for(const [ko,arr] of Object.entries(PLACE_GLOSSARY).sort((a,b)=>b[0].length-a[0].length))result=result.split(ko).join(arr[idx]);
+ result=result.replace(/(\d+)층/g,(_,n)=>appLang==='en'?`Floor ${n}`:appLang==='ja'?`${n}階`:`${n}层`);
+ return result;
+}
+const SEARCH_PLACEHOLDERS={ko:'학과·시설 검색 (간호, 학식, ATM)',en:'Search buildings, departments, facilities',ja:'建物・学科・施設を検索',zh:'搜索建筑、院系、设施'};
+const CAMPUS_NAMES={ko:{W:'서캠퍼스',E:'동캠퍼스',X:'캠퍼스 밖'},en:{W:'West Campus',E:'East Campus',X:'Off Campus'},ja:{W:'西キャンパス',E:'東キャンパス',X:'キャンパス外'},zh:{W:'西校区',E:'东校区',X:'校外'}};
+let appLang='ko';
+try{appLang=localStorage.getItem(LANG_KEY)||'ko'}catch(e){}
+if(!['ko','en','ja','zh'].includes(appLang))appLang='ko';
+const transBase=new Map();
+const revTranslation={};
+for(const lang of ['en','ja','zh'])for(const [k,v] of Object.entries(UI_TRANSLATIONS[lang]))revTranslation[v]=k;
+function translateText(t){const trim=t.trim();if(!trim)return t;const key=revTranslation[trim]||trim;const translated=(UI_TRANSLATIONS[appLang]||{})[key]||localizePlace(key);return t.replace(trim,translated)}
+function translateNode(root){
+ if(!root||root.nodeType!==1||['SCRIPT','STYLE','TEXTAREA','INPUT','OPTION'].includes(root.tagName))return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+ const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+ for(const node of nodes){if(node.parentElement?.closest('#map,.leaflet-container,#guide,#banner,#compass'))continue;const t=node.nodeValue;const updated=translateText(t);if(updated!==t)node.nodeValue=updated;}
+}
+function applyLanguage(){
+ document.documentElement.lang=appLang==='zh'?'zh-CN':appLang;
+ $('appLanguage').value=appLang;
+ $('q').placeholder=SEARCH_PLACEHOLDERS[appLang];
+ translateNode(document.body);
+ // Dynamic search and detail views are translated when rendered where possible.
+ if(typeof CAMP!=='undefined')Object.assign(CAMP,CAMPUS_NAMES[appLang]);
+}
+$('appLanguage').onchange=()=>{appLang=$('appLanguage').value;try{localStorage.setItem(LANG_KEY,appLang)}catch(e){};applyLanguage();if(!$('results').hidden)renderList();if(!$('sheet').hidden&&typeof currentBuilding!=='undefined'&&currentBuilding)openSheet(currentBuilding);drawPins();drawFac(false)};
+applyLanguage();
+const languageObserver=new MutationObserver(()=>{if(appLang!=='ko')translateNode(document.body)});
+languageObserver.observe(document.body,{childList:true,subtree:true});
+drawPins();
+loadOSM();
+</script>
+</body>
+</html>
