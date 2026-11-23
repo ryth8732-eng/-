@@ -321,7 +321,7 @@ const B = [
  ['S1','우송어학센터','X','어학'],['S2','우송IT교육센터','X','IT'],['S3','우송뷰티센터','X','뷰티'],
  ['S4','우송애견센터','X','애견'],['S5','우송오토센터','X','자동차 오토'],
  ['01','HRD기숙사','X','기숙사'],['03','청운1숙(남)','X','기숙사 청운'],['04','청운1숙(여)','X','기숙사 청운'],
- ['05','대전화병원','X','병원'],['06','솔브릿지국제경영대학','X','솔브릿지 solbridge 대전역'],
+ ['06','솔브릿지국제경영대학','X','솔브릿지 solbridge 대전역'],
 ].map(([code,name,c,tags])=>({code,name,c,tags}));
 
 /* ===== 건물별 학과·시설 (우송대 공식 캠퍼스맵 + 편의시설 안내 기준) ===== */
@@ -403,7 +403,6 @@ const INFO = {
  '01':{s:'동캠퍼스와 가까운 기숙사.'},
  '03':{s:'서캠퍼스 학생들이 많이 쓰는 기숙사 남자동. 우송도서관 옆 캠퍼스 외곽.'},
  '04':{s:'청운1숙 기숙사 여자동. 우송도서관 옆 캠퍼스 외곽.'},
- '05':{s:'화상 전문 병원.'},
  '06':{a:'SolBridge',s:'대전역 뒤편에 따로 있는 14층 건물. 주소는 우암로 128.'},
 };
 /* ===== 층별 안내 (나무위키 "우송대학교/캠퍼스" 기준 — 학과 개편 전 이름이 섞여 있을 수 있음) ===== */
@@ -436,7 +435,6 @@ const F = {
  S5:[['B1F','우송오토테크'],['1F','실습실'],['4F','강의실']],
  '03':[['B1F','학생식당'],['1F','정보라운지'],['2~6F','생활관']],
  '04':[['1F','정보라운지'],['2F','학생식당'],['2~5F','생활관']],
- '05':[['1F','대전화병원'],['2~3F','병실']],
  '06':[['B2F','솔스포렉스 수영장'],['B1F','솔스포렉스 헬스장'],['1F','솔코리안 레스토랑, 솔도르리 카페'],['2F','도서관'],['4F','강당'],['5F','솔브릿지경영학부'],['6~12F','강의실, 연구실']]
 };
 const KEYC='wsu-custom-v1';
@@ -493,7 +491,6 @@ const REFERENCE_POS={W16:[36.337811,127.445900],'06':[36.338500,127.432470]};
 // 학교 캠퍼스맵 건물 목록과 대조한 OpenStreetMap 건물 윤곽 내부 대표점.
 const BUILDING_MAP_POS = {
   '01': [36.334262, 127.450393], // HRD 숙소 · https://place.map.kakao.com/23868442
-  '05': [36.328961, 127.439163], // 대전화병원 · https://place.map.kakao.com/1596864826
   W1: [36.338101, 127.446415], // OSM way 74275068
   W2: [36.339569, 127.447339], // OSM way 108115439
   W3: [36.339620, 127.446499], // OSM way 196104778
@@ -733,7 +730,7 @@ const LEGACY_ALIASES = {
  S1:['우송어학센터','Woosong Language Center'], S2:['우송IT교육센터','우송IT센터','Woosong IT Center'], S3:['우송뷰티센터','Woosong Beauty Center'],
  S4:['우송애견센터','Woosong Pet Center','Woosong Dog Center'], S5:['우송오토센터','Woosong Auto Center'],
  '01':['HRD기숙사'], '03':['청운1숙(남자동)','청운1숙(남)'], '04':['청운1숙(여자동)','청운1숙(여)'],
- '05':['대전화병원'], '06':['솔브릿지국제경영대학','SolBridge International School of Business','솔브릿지','SolBridge'],
+ '06':['솔브릿지국제경영대학','SolBridge International School of Business','솔브릿지','SolBridge'],
 };
 function matchB(t,c){
  const cand=[t.ref,t.name,t['name:ko'],t['name:en'],t.alt_name,t.short_name,t.official_name,t.old_name].filter(Boolean).map(String);
@@ -816,7 +813,7 @@ const Q_NAMED=`[out:json][timeout:20];
 out geom tags;`;
 const Q1=`[out:json][timeout:25];
 (
-  way["name"~"우송|솔브릿지|청운|화병원|HRD|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  way["name"~"우송|솔브릿지|청운|HRD|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   way["name:en"~"Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   way["building"]["name"](36.329,127.438,36.344,127.459);
 );
@@ -824,7 +821,7 @@ out tags geom;
 relation["building"]["name"](36.329,127.438,36.344,127.459);
 out tags center;
 (
-  node["name"~"우송|솔브릿지|청운|화병원|HRD|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  node["name"~"우송|솔브릿지|청운|HRD|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   node["name:en"~"Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   node["amenity"~"^(cafe|restaurant|fast_food|food_court|atm|bank|library|post_office)$"](around:800,36.3368,127.4490);
   node["shop"~"^(convenience|supermarket|bakery|books)$"](around:800,36.3368,127.4490);
@@ -1478,7 +1475,6 @@ const PLACE_GLOSSARY={
  '우송뷰티센터':['Woosong Beauty Center','ウソンビューティーセンター','又松美容中心'],
  '우송애견센터':['Woosong Pet Center','ウソンペットセンター','又松宠物中心'],
  '우송오토센터':['Woosong Auto Center','ウソン自動車センター','又松汽车中心'],
- '대전화병원':['Daejeon Hwa Hospital','大田華病院','大田华医院'],
  '솔브릿지국제경영대학':['SolBridge International School of Business','ソルブリッジ国際経営大学','SolBridge国际商学院'],
  '학생식당':['Student Cafeteria','学生食堂','学生食堂'], '교직원식당':['Faculty & Staff Cafeteria','教職員食堂','教职工食堂'],
  '편의점':['Convenience Store','コンビニ','便利店'], '구내서점':['Campus Bookstore','学内書店','校内书店'],
