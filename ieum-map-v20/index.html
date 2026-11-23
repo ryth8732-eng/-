@@ -322,7 +322,6 @@ const B = [
  ['S4','우송애견센터','X','애견'],['S5','우송오토센터','X','자동차 오토'],
  ['01','HRD기숙사','X','기숙사'],['03','청운1숙(남)','X','기숙사 청운'],['04','청운1숙(여)','X','기숙사 청운'],
  ['05','대전화병원','X','병원'],['06','솔브릿지국제경영대학','X','솔브릿지 solbridge 대전역'],
- ['JCFS','JCFS Building','X','제이씨에프에스']
 ].map(([code,name,c,tags])=>({code,name,c,tags}));
 
 /* ===== 건물별 학과·시설 (우송대 공식 캠퍼스맵 + 편의시설 안내 기준) ===== */
@@ -367,7 +366,7 @@ const R = {
 /* ===== 건물 소개 · 다른 이름 · 위치 메모 (a=다른 이름, s=소개, m=메모) ===== */
 const INFO = {
  W1:{s:'서캠퍼스 정문으로 들어서면 바로 보이는 도서관. 우송대·우송정보대가 같이 써.',m:['열람실은 3·4·6층. 좌석은 모바일이나 도서관 키오스크로 예약.','도서관 앞 3층 건물 솔파크에 제과제빵 창업실습 빵집이 있어.']},
- W2:{a:'국제교육센터',s:'학군단 건물 옆. 뒤쪽으로 유학생기숙사(W3)와 JCFS.'},
+ W2:{a:'국제교육센터',s:'학군단 건물 옆. 뒤쪽으로 유학생기숙사(W3)가 있다.'},
  W3:{a:'청운2숙',s:'유학생 기숙사. 산학협력관(W2) 뒤쪽.'},
  W4:{a:'공학관',s:'철도물류대학과 소방·안전학부가 쓰는 건물.',m:['2층 구름다리로 보건의료과학관(W5)과 이어져.']},
  W5:{a:'정보과학관, 정보관',s:'보건복지대학과 철도경영학과가 쓰는 건물.',m:['출입구가 2층에 있어.','2층 구름다리로 철도물류관(W4)과 이어져.']},
@@ -406,7 +405,6 @@ const INFO = {
  '04':{s:'청운1숙 기숙사 여자동. 우송도서관 옆 캠퍼스 외곽.'},
  '05':{s:'화상 전문 병원.'},
  '06':{a:'SolBridge',s:'대전역 뒤편에 따로 있는 14층 건물. 주소는 우암로 128.'},
- JCFS:{s:'산학협력관(W2) 뒤쪽에 있는 건물.',m:['휴먼디지털인터페이스학부가 쓰던 건물로 알려져 있어.']}
 };
 /* ===== 층별 안내 (나무위키 "우송대학교/캠퍼스" 기준 — 학과 개편 전 이름이 섞여 있을 수 있음) ===== */
 const F = {
@@ -736,7 +734,6 @@ const LEGACY_ALIASES = {
  S4:['우송애견센터','Woosong Pet Center','Woosong Dog Center'], S5:['우송오토센터','Woosong Auto Center'],
  '01':['HRD기숙사'], '03':['청운1숙(남자동)','청운1숙(남)'], '04':['청운1숙(여자동)','청운1숙(여)'],
  '05':['대전화병원'], '06':['솔브릿지국제경영대학','SolBridge International School of Business','솔브릿지','SolBridge'],
- JCFS:['JCFS Building','JCFS','JW KIM College of Future Studies']
 };
 function matchB(t,c){
  const cand=[t.ref,t.name,t['name:ko'],t['name:en'],t.alt_name,t.short_name,t.official_name,t.old_name].filter(Boolean).map(String);
@@ -819,7 +816,7 @@ const Q_NAMED=`[out:json][timeout:20];
 out geom tags;`;
 const Q1=`[out:json][timeout:25];
 (
-  way["name"~"우송|솔브릿지|청운|화병원|HRD|JCFS|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  way["name"~"우송|솔브릿지|청운|화병원|HRD|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   way["name:en"~"Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   way["building"]["name"](36.329,127.438,36.344,127.459);
 );
@@ -827,7 +824,7 @@ out tags geom;
 relation["building"]["name"](36.329,127.438,36.344,127.459);
 out tags center;
 (
-  node["name"~"우송|솔브릿지|청운|화병원|HRD|JCFS|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
+  node["name"~"우송|솔브릿지|청운|화병원|HRD|Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   node["name:en"~"Woosong|SolBridge",i](36.318,127.415,36.350,127.470);
   node["amenity"~"^(cafe|restaurant|fast_food|food_court|atm|bank|library|post_office)$"](around:800,36.3368,127.4490);
   node["shop"~"^(convenience|supermarket|bakery|books)$"](around:800,36.3368,127.4490);
