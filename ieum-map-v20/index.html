@@ -237,7 +237,7 @@
 </div>
 
 <div class="fab">
-  <button id="btnAudit" hidden title="42개 건물 위치 점검"><span class="i">🔎</span><span class="l">위치 점검</span></button>
+  <button id="btnAudit" hidden title="건물 위치 점검"><span class="i">🔎</span><span class="l">위치 점검</span></button>
   <button id="btnData" hidden><span class="i">💾</span><span class="l">백업</span></button>
   <button id="btnReference" title="캠퍼스 배치도"><span class="i">🗺️</span><span class="l">배치도</span></button>
   <button id="btnCampus"><span class="i">🏫</span><span class="l">학교</span></button>
@@ -273,7 +273,7 @@
 
 <div class="modal" id="auditModal" hidden role="dialog" aria-label="건물 위치 점검">
   <div class="box auditbox">
-    <div class="audithead"><b>🔎 건물 위치 점검 · 42곳</b><button id="auditClose">닫기 ✕</button></div>
+    <div class="audithead"><b>🔎 건물 위치 점검</b><button id="auditClose">닫기 ✕</button></div>
     <p>학교 공식 캠퍼스맵과 건물 번호를 대조했어. 아래 위치 판정은 좌표의 출처·범위 검사를 뜻하며, 현장 출입구 검증을 의미하지 않아.</p>
     <div id="auditSummary" class="auditSummary"></div>
     <div class="auditActions"><button id="auditRefresh">🔄 OSM 윤곽 다시 확인</button><button id="auditExport">📋 점검표 복사</button></div>
@@ -1423,7 +1423,7 @@ async function cloudRefreshSession(){if(!adminUnlocked||!cloudRefresh)return;
  try{const session=await cloudRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:cloudRefresh})});cloudToken=session.access_token;cloudRefresh=session.refresh_token}catch(e){cloudLock()}
 }
 if(cloudReady()){cloudPull();cloudTimer=setInterval(cloudPull,8000);setInterval(cloudRefreshSession,45*60*1000)}
-/* ===== 관리자 전용 42개 건물 위치 점검표 ===== */
+/* ===== 관리자 전용 건물 위치 점검표 ===== */
 function auditRecords(){return B.map(b=>({b,kind:positionKind(b),p:positionOf(b)}))}
 function renderAudit(){
   const records=auditRecords(),count=k=>records.filter(x=>x.kind===k).length;
