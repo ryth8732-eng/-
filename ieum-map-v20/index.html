@@ -137,18 +137,12 @@
   .memo+.memo{border-top:1px dashed var(--line)}
 
   /* 방향 안내 (나침반) */
-  .compass{position:fixed;z-index:1000;left:50%;top:50%;transform:translate(-50%,-58%);width:min(300px,84vw);background:rgba(23,32,28,.88);color:#fff;border-radius:28px;padding:20px 16px 18px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.4);backdrop-filter:blur(6px)}
-  .dial{position:relative;width:min(210px,58vw);aspect-ratio:1;margin:0 auto;border-radius:50%;border:3px solid rgba(255,255,255,.25);background:radial-gradient(circle,rgba(255,255,255,.08),rgba(255,255,255,0) 70%)}
-  .dial::before{content:"";position:absolute;left:50%;top:-9px;transform:translateX(-50%);border:8px solid transparent;border-bottom:10px solid #fff;border-top:0}
+  .compass{position:absolute;bottom:calc(100% + 6px);left:0;display:grid;grid-template-columns:30px auto;align-items:center;gap:2px 6px;max-width:100%;padding:5px 8px;border-radius:10px;background:rgba(23,32,28,.88);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+  .dial{position:relative;width:30px;height:30px;border:1px solid #ffffff70;border-radius:50%}
   #needle{position:absolute;inset:0;width:100%;height:100%;transition:transform .25s ease-out}
-  .cd2{position:absolute;inset:0;display:grid;place-content:center;pointer-events:none}
-  .cdist{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;text-shadow:0 1px 4px rgba(0,0,0,.6);margin-top:46px}
-  .cto{font-size:12px;opacity:.8}
-  .cturn{font-size:22px;font-weight:800;margin-top:14px}
-  .cturn.ok{color:#7be0a6}
-  .csub{font-size:13px;opacity:.75;margin-top:4px}
-  .cbtn{margin-top:12px;border:0;border-radius:10px;padding:10px 16px;background:#fff;color:#17201c;font-weight:700}
-  .compass.done .cturn{color:#7be0a6}
+  .cturn{font-size:12px;font-weight:600}
+  .cturn.ok,.compass.done .cturn{color:#7be0a6}
+  .cbtn{grid-column:1/-1;min-height:28px;border:0;border-radius:6px;background:#fff;color:#17201c;font-size:12px}
 
   /* 알림 띠 */
   .banner{position:fixed;z-index:1003;left:12px;right:12px;top:calc(166px + env(safe-area-inset-top,0px));background:var(--fg);color:#fff;border-radius:12px;padding:12px 14px;font-size:15px;display:flex;gap:10px;align-items:center;box-shadow:0 3px 12px rgba(0,0,0,.3)}
@@ -249,16 +243,14 @@
   <div class="gi"><div class="to" id="gName"></div><div class="d" id="gDist">–</div><div class="nx" id="gNext" hidden></div><div class="m" id="gMeta"></div></div>
   <div class="gb"><button class="stop" id="gView">지도</button><button class="stop" id="gInfoBtn">정보</button><button class="stop" id="gStop">종료</button></div>
   <div class="gfoot" id="gFoot"></div>
-</div>
 
 <div class="compass" id="compass" hidden>
   <div class="dial">
     <svg viewBox="0 0 200 200" id="needle"><path d="M100 18 L132 110 L100 92 L68 110 Z" fill="#d93a2f" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>
-    <div class="cd2"><div class="cdist" id="cDist">–</div><div class="cto" id="cTo"></div></div>
   </div>
   <div class="cturn" id="cTurn">방향 계산 중…</div>
-  <div class="csub" id="cSub"></div>
   <button class="cbtn" id="cCal" hidden>방향 센서 켜기</button>
+</div>
 </div>
 
 <div class="sheet" id="sheet" hidden>
@@ -1307,18 +1299,15 @@ function paintCompass(){
   const show = target && dest && compassView && $('sheet').hidden;
   $('compass').hidden=!show;
   if(!show) return;
-  if(!me){ $('cDist').textContent='–'; $('cTurn').textContent='내 위치 찾는 중…'; $('cSub').textContent=''; return; }
+  if(!me){ $('cTurn').textContent='내 위치 찾는 중…'; return; }
   const d=dist(me,dest), br=bearing(me,dest);
-  $('cTo').textContent=target.name;
-  $('cDist').textContent=fmtM(d);
   const box=$('compass');
-  if(d<15){ box.classList.add('done'); $('cTurn').textContent='도착했어!'; $('cSub').textContent=''; rotateTo($('needle'),0); return; }
+  if(d<15){ box.classList.add('done'); $('cTurn').textContent='도착했어!'; rotateTo($('needle'),0); return; }
   box.classList.remove('done');
   if(heading==null){
     rotateTo($('needle'),br);
     $('cTurn').className='cturn';
-    $('cTurn').textContent=`${DIRS[Math.round(br/45)%8]}쪽으로 가`;
-    $('cSub').textContent='폰 방향을 몰라서 화살표가 지도 기준(위=북쪽)이야';
+    $('cTurn').textContent=`지도 기준 · ${DIRS[Math.round(br/45)%8]}쪽`;
     $('cCal').hidden=false;
     return;
   }
@@ -1331,7 +1320,6 @@ function paintCompass(){
   else if(a>=150) t='뒤로 돌아';
   else t=(rel>0?'오른쪽':'왼쪽')+`으로 ${a}° 돌아`;
   $('cTurn').textContent=t; $('cTurn').className='cturn'+(a<=15?' ok':'');
-  $('cSub').textContent=`목적지는 ${DIRS[Math.round(br/45)%8]}쪽 · 직선 거리${hasCompass?'':' (이동 방향 기준)'}`;
 }
 
 /* ===== GPS ===== */
