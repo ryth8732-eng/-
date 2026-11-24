@@ -209,13 +209,23 @@
   body:has(#guide:not([hidden])) .bottomnav{display:none}
   body:has(#guide:not([hidden])) .guide,body:has(#guide:not([hidden])) .fab{bottom:calc(20px + env(safe-area-inset-bottom))}
   @media(min-width:650px){.bottomnav{left:12px;bottom:12px;border-radius:16px;width:330px}.sheet{left:12px;bottom:12px;border-radius:18px}.guide,.hint{max-width:490px}}
+  #askCampus,#assistantForm button{border:0;border-radius:12px;padding:0 12px;height:44px;background:#08794b;color:white;font-weight:700;white-space:nowrap}
+  #campusAssistant{width:min(440px,94vw);max-height:80dvh;overflow:auto;border:0;border-radius:18px;padding:20px;color:#18372b;box-shadow:0 10px 40px #102a2033}
+  #campusAssistant::backdrop{background:#132d2255}
+  #campusAssistant header,#assistantForm div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  #assistantClose{border:0;background:transparent;font-size:26px}
+  #assistantForm label{display:block;margin:12px 0 6px;font-size:14px}
+  #assistantQuery{flex:1;min-width:0;border:1px solid #b3c7bd;padding:10px;border-radius:9px;font:inherit}
+  #assistantAnswers article{padding:12px 0;border-top:1px solid #dce6df}
+  #assistantAnswers p{font-size:14px;line-height:1.5}
+  #assistantAnswers button{border:1px solid #b3c7bd;border-radius:8px;background:white;padding:6px 10px;margin-right:6px}
 </style>
 </head>
 <body>
 <div id="map"></div>
 
 <div class="top">
-  <div class="searchline"><label class="search"><span class="searchIcon" aria-hidden="true"></span><input id="q" type="search" aria-label="학과·시설 검색" autocomplete="off"></label><button id="settings" aria-expanded="false" aria-controls="options" aria-label="지도 설정">☷</button></div>
+  <div class="searchline"><label class="search"><span class="searchIcon" aria-hidden="true"></span><input id="q" type="search" aria-label="학과·시설 검색" autocomplete="off"></label><button id="askCampus" aria-haspopup="dialog" title="AI에게 물어보기">✦ AI</button><button id="settings" aria-expanded="false" aria-controls="options" aria-label="지도 설정">☷</button></div>
   <div class="filters"><div class="cats" id="cats"></div><button id="more" aria-expanded="false" aria-controls="extraCats">더보기</button></div>
   <div id="extraCats" class="cats" hidden></div>
   <div class="tabs" id="tabs">
@@ -1100,6 +1110,7 @@ function openSheet(b){
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const cafeteriaHours = {
+  windows:[[660,900],[960,1140]], weekdays:true,
   url:'https://english.wsu.ac.kr/page/index.jsp?code=eng050102a',
   ko:'학생식당 · 평일 점심 11:00–15:00, 저녁 16:00–19:00. 주말·공휴일 휴무.',
   en:'Student cafeteria · Weekdays 11:00–15:00 and 16:00–19:00. Closed weekends and public holidays.',
@@ -1109,6 +1120,7 @@ const cafeteriaHours = {
 const facilityHours = {
   E1:[cafeteriaHours],
   W16:[cafeteriaHours, {
+    windows:[[480,600]], weekdays:true, start:'2026-09-01', end:'2026-12-11',
     url:'https://aim.wsu.ac.kr/board/read.jsp?code=aim0402&id=268902',
     ko:'1층 천원의 아침밥 · 2026.09.01–12.11 평일 08:00–10:00. 방학·공휴일 제외.',
     en:'1F ₩1,000 breakfast · Sep 1–Dec 11, 2026. Weekdays 08:00–10:00, except during breaks and public holidays.',
@@ -1116,6 +1128,7 @@ const facilityHours = {
     zh:'一楼千元韩币早餐 · 2026年9月1日至12月11日，工作日 08:00–10:00，学校假期及法定节假日除外。'
   }],
   W1:[{
+    windows:[[420,1380]],
     url:'https://www.wsu.ac.kr/site/main/download/rules/2023/5-1-1a.pdf',
     ko:'4층 일반열람실 · 07:00–23:00. 설날·추석 당일 휴관. 시험 기간에는 시간이 달라질 수 있습니다.',
     en:'4F study room · 07:00–23:00. Closed on Lunar New Year’s Day and Chuseok Day. Exam hours may vary.',
@@ -1613,5 +1626,13 @@ languageObserver.observe(document.body,{childList:true,subtree:true});
 drawPins();
 loadOSM();
 </script>
+<dialog id="campusAssistant" aria-labelledby="assistantTitle">
+  <header><strong id="assistantTitle">AI 캠퍼스 안내</strong><button type="button" aria-label="닫기" id="assistantClose">×</button></header>
+  <form id="assistantForm"><label for="assistantQuery">건물·시설·운영시간을 물어보세요</label>
+    <div><input id="assistantQuery" required maxlength="200" placeholder="저녁 6시에 밥 먹을 곳 있어?" autocomplete="off"><button>찾기</button></div>
+  </form>
+  <div id="assistantAnswers" aria-live="polite"></div>
+</dialog>
+<script src="campus-assistant.js"></script>
 </body>
 </html>
