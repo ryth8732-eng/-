@@ -399,6 +399,22 @@ const classrooms = {
  ],
  W10:[{room:'103-2호',n:'멀티미디어강의실',url:'https://teaching.wsu.ac.kr/page/index.jsp?code=teaching0206'}]
 };
+const workshopRooms={W4:['A103','A104','A201','A202','AB104'],E1:['401','405','703'],S5:['302']};
+for(const [code,numbers] of Object.entries(workshopRooms)){
+  classrooms[code]=numbers.map(number=>({room:number+'호',n:'비교과 강의실',source:'2021년 우송정보대학 프로그램 운영 안내',url:'https://www.wsi.ac.kr/board/read.jsp?code=square1101&id=216030'}));
+}
+// 2023 대학생활 안내서의 강의실 표기. 층 범위는 호실 자료와 구분한다.
+const classroomFloors={
+ W2:'4F',W4:'3F',W5:'2F · 5F',W6:'2–5F',W7:'3–5F',W9:'B1–2F',
+ W10:'2F · 4–5F',W12:'1–4F',W13:'5F · 7F · 9F',W14:'1–5F',
+ W15:'3–5F',W16:'2F · 4–5F',W17:'B1 · 5F',S1:'2–3F · 7F',
+ S2:'B1 · 1F · 3–5F',S3:'B1 · 4–5F',S4:'2–4F',S5:'4F','06':'6–12F'
+};
+function classroomFloorMarkup(code){
+  if(!classroomFloors[code])return '';
+  const label={ko:'강의실 층',en:'Classroom floors',ja:'教室のある階',zh:'教室楼层'}[appLang];
+  return '<p>'+label+' · '+classroomFloors[code]+' <a href="https://www.wsu.ac.kr/site/main/download/etc/2023_campuslife.pdf" target="_blank" rel="noopener noreferrer">2023 대학생활 안내 ↗</a></p>';
+}
 const springRoomList = {
   W10: [['410호','강의실']],
   W12: [['102호','강의실'], ['103호','강의실'], ['105호','강의실'], ['503호','강의실']],
@@ -1169,8 +1185,10 @@ function openSheet(b){
     groups.get(entry.url).rooms.push(entry.room+' '+entry.n);
   }
   const heading={ko:'강의실 안내',en:'Classrooms',ja:'教室案内',zh:'教室指南'}[appLang];
-  $('sClassrooms').innerHTML=groups.size?'<section><h4>'+heading+'</h4>'+[...groups].map(([url,g])=>
-    '<p>'+esc(g.rooms.join(' · '))+'<br><a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">'+esc(g.label)+' ↗</a></p>').join('')+'</section>':'';
+  const floors=classroomFloorMarkup(b.code);
+  const missing={ko:'학교 공개 자료에서 강의실 호실을 확인하지 못했습니다.',en:'Room numbers could not be verified from public university sources.',ja:'大学の公開資料では教室番号を確認できませんでした。',zh:'学校公开资料中尚未核实教室编号。'}[appLang];
+  $('sClassrooms').innerHTML='<section><h4>'+heading+'</h4>'+floors+(groups.size?'':'<p>'+missing+'</p>')+[...groups].map(([url,g])=>
+    '<p>'+esc(g.rooms.join(' · '))+'<br><a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">'+esc(g.label)+' ↗</a></p>').join('')+'</section>';
   $('sParking').innerHTML=parkingLocations[b.code]?'<strong>주차장</strong>'+parkingLink(b.code):'';
   const departments=buildingDepartments(b.code);
   $('sDepartments').innerHTML=departments.length?departmentLinks(departments):'';

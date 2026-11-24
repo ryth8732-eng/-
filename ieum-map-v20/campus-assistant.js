@@ -79,7 +79,7 @@
     const text=q.normalize('NFKC').toUpperCase();
     const code=text.match(/(?:^|[^A-Z0-9])([WES]\d{1,2})(?!\d)/)?.[1];
     const remainder=code?text.replace(code,' '):text;
-    const number=remainder.match(/(?:^|[^A-Z0-9])([A-Z]?\d{3,4}(?:-\d+)?)(?:\s*호|(?![A-Z0-9:-]))/)?.[1];
+    const number=remainder.match(/(?:^|[^A-Z0-9])([A-Z]{0,2}\d{3,4}(?:-\d+)?)(?:\s*호|(?![A-Z0-9:-]))/)?.[1];
     const byName=B.filter(b=>clean(q).includes(clean(b.name)));
     const buildings=code?B.filter(b=>b.code===code):byName.length?byName:B;
     const classroomQuery=/강의실|강의장|CLASSROOM/.test(text);
@@ -92,23 +92,25 @@
       const named=b.items.filter(x=>clean(x.n)&&clean(q).includes(clean(x.n)));
       const items=b.items.filter(x=>{
         if(!x.room)return false;
-        if(number)return x.room.toUpperCase().match(/^([A-Z]?\d{3,4}(?:-\d+)?)(?=호|\s|$)/)?.[1]===number;
+        if(number)return x.room.toUpperCase().match(/^([A-Z]{0,2}\d{3,4}(?:-\d+)?)(?=호|\s|$)/)?.[1]===number;
         if(named.length)return named.includes(x);
         return classroomQuery && /강의실|강의장/.test(x.n);
       });
-      if(!items.length)continue;
+      const floors=classroomQuery&&!number&&!named.length?classroomFloorMarkup(b.code):'';
+      if(!items.length&&!floors)continue;
       const card=document.createElement('article');
       card.innerHTML='<strong>'+esc(b.code+' '+b.name)+'</strong>';
+      if(floors)card.insertAdjacentHTML('beforeend',floors);
       for(const x of items){
         const floor=floorOf(x.room);
         card.innerHTML+='<p>'+esc([floor==null?'':floor+'층',x.room,x.n].filter(Boolean).join(' · '))+
-          (x.url?' <a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">학교 자료</a>':'')+'</p>';
+          (x.url?' <a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">'+esc(x.source||'학교 자료')+'</a>':'')+'</p>';
       }
       addMapActions(card,b,'건물까지 길찾기');
       answers.append(card);count++;
     }
     const note=document.createElement('p');
-    note.textContent=count?(count>1?'여러 건물이 일치합니다. 시간표의 건물 번호를 확인하세요.':'지도에 등록된 호실입니다.'):'등록 자료에서 해당 호실을 확인하지 못했습니다. 시간표의 건물 번호와 호실을 확인해 주세요.';
+    note.textContent=count?(count>1?'여러 건물이 일치합니다. 시간표의 건물 번호를 확인하세요.':'확인된 강의실 안내입니다.'):'등록 자료에서 해당 호실을 확인하지 못했습니다. 시간표의 건물 번호와 호실을 확인해 주세요.';
     answers.prepend(note);
     return true;
   }
