@@ -220,7 +220,7 @@
   #assistantAnswers p{font-size:14px;line-height:1.5}
   #assistantAnswers button{border:1px solid #b3c7bd;border-radius:8px;background:white;padding:6px 10px;margin-right:6px}
   .departmentLinks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.departmentLinks strong{width:100%;font-size:14px}.departmentLinks a{color:#086740;background:#edf6f1;border-radius:8px;padding:7px 9px;font-size:13px;text-decoration:underline}
-  .sheet:not([data-pane=info]) #sClassrooms,.sheet:not([data-pane=info]) #sDepartments{display:none}
+  .sheet:not([data-pane=info]) #sParking,.sheet:not([data-pane=info]) #sClassrooms,.sheet:not([data-pane=info]) #sDepartments{display:none}
 </style>
 </head>
 <body>
@@ -291,6 +291,7 @@
   <div class="sub" id="sSub"></div>
   <div id="detailTabs" hidden><button data-pane="info">정보</button><button data-pane="facilities">시설</button><button data-pane="hours">운영시간</button><button id="bookmark" aria-label="즐겨찾기">☆</button></div>
   <div class="desc" id="sDesc" hidden></div>
+  <div id="sParking"></div>
   <div id="sClassrooms"></div>
   <div id="sDepartments"></div>
   <div class="items" id="sItems"></div>
@@ -486,12 +487,30 @@ const KEYC='wsu-custom-v1';
 let custom={}; try{ custom=JSON.parse(localStorage.getItem(KEYC)||'{}')||{}; }catch(e){ custom={}; }
 const saveC=()=>{ try{ localStorage.setItem(KEYC,JSON.stringify(custom)); }catch(e){}; if(typeof cloudQueueSync==='function')cloudQueueSync(); };
 const nrm = s => String(s).toLowerCase().replace(/[\s·(),]/g,'');
+const parkingSource='https://www.wsu.ac.kr/site/main/download/etc/2023_campuslife.pdf';
+const parkingLocations={
+ W1:'B3–B1',W5:'B1 · 1F',W13:'B1 · 1F · 2F',S1:'B2',S2:'B3–2F',
+ E1:'건물 옆 옥외 주차장'
+};
+function parkingLink(code){
+  const outside=code==='E1';
+  const url=outside?'https://ent.wsu.ac.kr/site/ent/html/page/20201014/info2021.pdf':parkingSource;
+  return '<p>🅿️ '+esc(parkingLocations[code])+' · <a href="'+url+'" target="_blank" rel="noopener noreferrer">'+(outside?'2020년 입학처 주차 안내':'2023년 대학생활 안내')+'</a></p>';
+}
+function parkingSearch(q){
+  if(!/주차|차\s*(?:댈|세울)|parking|駐車|停车/i.test(q))return null;
+  const code=q.match(/(?:^|[^a-z0-9])([wes]\d{1,2})(?!\d)/i)?.[1].toUpperCase();
+  const named=B.find(b=>q.includes(b.name));
+  return B.filter(b=>parkingLocations[b.code]&&(!code||b.code===code)&&(!named||b===named)&&
+    (!/동캠/.test(q)||b.c==='E')&&(!/서캠/.test(q)||b.c==='W'));
+}
 function buildInfo(b){
   const list=(D[b.code]||[]).map(n=>({n,room:'',tel:''}));
   (R[b.code]||[]).forEach(([n,room,tel])=>{
     const hit=list.find(x=>nrm(x.n)===nrm(n)||nrm(x.n).includes(nrm(n))||nrm(n).includes(nrm(x.n)));
     if(hit){ hit.room=room; hit.tel=tel; } else list.push({n,room,tel});
   });
+  if(parkingLocations[b.code])list.push({n:'자동차 주차장',room:parkingLocations[b.code],tel:''});
   list.push(...(classrooms[b.code]||[]));
   (custom[b.code]||[]).forEach((c,i)=>list.push({n:c.n,room:c.room,tel:'',mine:i}));
   b.items=list;
@@ -652,10 +671,12 @@ function renderList(){
   const terms = q ? [norm(q), ...(SYN[q.replace(/\s/g,'').toLowerCase()]||'').split(' ').filter(Boolean).map(norm)] : [];
   const hits = t => terms.some(x=>norm(t).includes(x));
   const list = [];
-  B.forEach(b=>{
+  const parking=parkingSearch(q);
+  (parking||B).forEach(b=>{
     if(savedOnly && !savedCodes.has(b.code))return;
     if(tab!=='all' && b.c!==tab) return;
     if(!q){ list.push({b,m:[]}); return; }
+    if(parking){list.push({b,m:['주차장 · '+parkingLocations[b.code]]});return}
     const hi = b.items.filter(x=>hits(x.n));
     const m = hi.map(x=>x.n+(x.room?' · '+x.room:''));
     const seen = hi.map(x=>norm(x.n)), fm = new Map();
@@ -708,6 +729,7 @@ const CATS=[
  {k:'atm',e:'💳',n:'ATM·은행',re:/현금인출기/, osm:t=>t.amenity==='atm'||t.amenity==='bank'},
  {k:'doc',e:'📄',n:'증명서·우편',re:/증명발급기|우편/, osm:t=>t.amenity==='post_office'},
  {k:'gym',e:'🏋️',n:'헬스',re:/체력단련|헬스|스포츠센터|수영/, osm:t=>t.leisure==='fitness_centre'},
+ {k:'parking',e:'🅿️',n:'주차장',re:/자동차 주차장/,osm:()=>false},
  {k:'lib',e:'📚',n:'도서관·서점',re:/도서관|자료실|서점/, osm:t=>t.amenity==='library'||t.shop==='books'}
 ];
 const catOn=new Set();
@@ -1128,6 +1150,7 @@ function openSheet(b){
   const heading={ko:'강의실 안내',en:'Classrooms',ja:'教室案内',zh:'教室指南'}[appLang];
   $('sClassrooms').innerHTML=groups.size?'<section><h4>'+heading+'</h4>'+[...groups].map(([url,g])=>
     '<p>'+esc(g.rooms.join(' · '))+'<br><a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">'+esc(g.label)+' ↗</a></p>').join('')+'</section>':'';
+  $('sParking').innerHTML=parkingLocations[b.code]?'<strong>주차장</strong>'+parkingLink(b.code):'';
   const departments=buildingDepartments(b.code);
   $('sDepartments').innerHTML=departments.length?departmentLinks(departments):'';
   renderInfo(b); $('sItems').hidden=false; setPane(detailPane);

@@ -116,6 +116,17 @@
     event.preventDefault();
     const q=$('assistantQuery').value.trim(), rows=find(q),time=requestedTime(q);
     answers.replaceChildren();
+    const parking=parkingSearch(q);
+    if(parking){
+      answers.textContent=parking.length?'학교 자료에 표시된 주차장입니다. 요금과 실시간 빈자리는 현장에서 확인하세요.':'이 위치에서 학교 자료로 확인한 주차장을 찾지 못했습니다.';
+      for(const b of parking){
+        const card=document.createElement('article');
+        card.innerHTML='<strong>'+esc(b.code+' '+b.name)+'</strong>'+parkingLink(b.code);
+        addMapActions(card,b,'건물까지 길찾기');
+        answers.append(card);
+      }
+      return;
+    }
     if(answerRoom(q))return;
     const wantsWebsite=/홈페이지|사이트|학과\s*안내|website/i.test(q);
     const query=departmentKey(q).replace(/홈페이지|사이트|주소|알려줘|바로가기|website/g,'').trim();
