@@ -220,7 +220,7 @@
   #assistantAnswers p{font-size:14px;line-height:1.5}
   #assistantAnswers button{border:1px solid #b3c7bd;border-radius:8px;background:white;padding:6px 10px;margin-right:6px}
   .departmentLinks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.departmentLinks strong{width:100%;font-size:14px}.departmentLinks a{color:#086740;background:#edf6f1;border-radius:8px;padding:7px 9px;font-size:13px;text-decoration:underline}
-  .sheet:not([data-pane=info]) #sDepartments{display:none}
+  .sheet:not([data-pane=info]) #sClassrooms,.sheet:not([data-pane=info]) #sDepartments{display:none}
 </style>
 </head>
 <body>
@@ -291,6 +291,7 @@
   <div class="sub" id="sSub"></div>
   <div id="detailTabs" hidden><button data-pane="info">정보</button><button data-pane="facilities">시설</button><button data-pane="hours">운영시간</button><button id="bookmark" aria-label="즐겨찾기">☆</button></div>
   <div class="desc" id="sDesc" hidden></div>
+  <div id="sClassrooms"></div>
   <div id="sDepartments"></div>
   <div class="items" id="sItems"></div>
   <div class="acts" id="sActs"></div>
@@ -396,6 +397,17 @@ const classrooms = {
  ],
  W10:[{room:'103-2호',n:'멀티미디어강의실',url:'https://teaching.wsu.ac.kr/page/index.jsp?code=teaching0206'}]
 };
+const springRoomList = {
+  W10: [['410호','강의실']],
+  W12: [['102호','강의실'], ['103호','강의실'], ['105호','강의실'], ['503호','강의실']],
+  W16: [['201호','강의실'], ['202호','강의실'], ['402호','강의실'], ['404-1호','강의실'], ['406호','강의실'], ['501-1호','소강당'], ['501-2호','소강당'], ['502호','강의실'], ['505호','강의실']],
+  W19: [['103호','강의실'], ['104호','강의실'], ['105호','강의실'], ['106호','강의실'], ['107호','강의실'], ['108호','강의실'], ['109호','강의실'], ['110호','강의실']],
+  W6: [['404호','강의실'], ['405호','강의실'], ['408호','강의실'], ['507호','강의실'], ['509호','강의실']],
+};
+for(const [code, entries] of Object.entries(springRoomList)){
+  (classrooms[code]??=[]).push(...entries.map(([room,n])=>({room,n,source:'2026학년도 1학기 시간표',url:'https://sihom.wsu.ac.kr/board/read.jsp?code=sih0603&id=265006'})));
+}
+classrooms.W17=['106호','501호'].map(room=>({room,n:'동관 강의실',source:'2026년 2월 학과 안내',url:'https://design.wsu.ac.kr/board/read.jsp?code=design0201&id=265325'}));
 /* ===== 건물 소개 · 다른 이름 · 위치 메모 (a=다른 이름, s=소개, m=메모) ===== */
 const INFO = {
  W1:{s:'서캠퍼스 정문으로 들어서면 바로 보이는 도서관. 우송대·우송정보대가 같이 써.',m:['열람실은 3·4·6층. 좌석은 모바일이나 도서관 키오스크로 예약.','도서관 앞 3층 건물 솔파크에 제과제빵 창업실습 빵집이 있어.']},
@@ -1108,6 +1120,14 @@ function openSheet(b){
   $('sTitle').textContent=b.name;
   $('sSub').innerHTML = CAMP[b.c] + (p&&me?` · 여기서 직선 <b>${fmtM(dist(me,p))}</b>`:'');
   $('sDesc').innerHTML=esc(b.sum)+(b.alias?`<small>다른 이름: ${esc(b.alias)}</small>`:''); $('sDesc').hidden=!(b.sum||b.alias);
+  const groups=new Map();
+  for(const entry of classrooms[b.code]||[]){
+    if(!groups.has(entry.url))groups.set(entry.url,{label:entry.source||'학교 자료',rooms:[]});
+    groups.get(entry.url).rooms.push(entry.room+' '+entry.n);
+  }
+  const heading={ko:'강의실 안내',en:'Classrooms',ja:'教室案内',zh:'教室指南'}[appLang];
+  $('sClassrooms').innerHTML=groups.size?'<section><h4>'+heading+'</h4>'+[...groups].map(([url,g])=>
+    '<p>'+esc(g.rooms.join(' · '))+'<br><a target="_blank" rel="noopener noreferrer" href="'+esc(url)+'">'+esc(g.label)+' ↗</a></p>').join('')+'</section>':'';
   const departments=buildingDepartments(b.code);
   $('sDepartments').innerHTML=departments.length?departmentLinks(departments):'';
   renderInfo(b); $('sItems').hidden=false; setPane(detailPane);
