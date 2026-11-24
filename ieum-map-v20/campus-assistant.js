@@ -71,6 +71,14 @@
     event.preventDefault();
     const q=$('assistantQuery').value.trim(), rows=find(q),time=requestedTime(q);
     answers.replaceChildren();
+    const wantsWebsite=/홈페이지|사이트|학과\s*안내|website/i.test(q);
+    const query=departmentKey(q).replace(/홈페이지|사이트|주소|알려줘|바로가기|website/g,'').trim();
+    const matched=departmentSites.filter(([name])=>departmentNames(name).some(alias=>
+      departmentKey(q).includes(alias)||(query.length>=2 && alias.includes(query))));
+    if(wantsWebsite||matched.length){
+      answers.insertAdjacentHTML('beforeend',departmentLinks(matched));
+      if(wantsWebsite)return;
+    }
     const summary=document.createElement('p');
     summary.textContent=rows.length?(time.minute===null?'지도에 등록된 시설과 운영시간입니다.':time.date+' 한국 시간 기준입니다. 공휴일·임시 휴무는 학교 안내를 확인하세요.'):'일치하는 장소를 찾지 못했습니다. 건물 번호나 시설명을 넣어 보세요.';
     answers.append(summary);

@@ -219,6 +219,8 @@
   #assistantAnswers article{padding:12px 0;border-top:1px solid #dce6df}
   #assistantAnswers p{font-size:14px;line-height:1.5}
   #assistantAnswers button{border:1px solid #b3c7bd;border-radius:8px;background:white;padding:6px 10px;margin-right:6px}
+  .departmentLinks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.departmentLinks strong{width:100%;font-size:14px}.departmentLinks a{color:#086740;background:#edf6f1;border-radius:8px;padding:7px 9px;font-size:13px;text-decoration:underline}
+  .sheet:not([data-pane=info]) #sDepartments{display:none}
 </style>
 </head>
 <body>
@@ -289,6 +291,7 @@
   <div class="sub" id="sSub"></div>
   <div id="detailTabs" hidden><button data-pane="info">정보</button><button data-pane="facilities">시설</button><button data-pane="hours">운영시간</button><button id="bookmark" aria-label="즐겨찾기">☆</button></div>
   <div class="desc" id="sDesc" hidden></div>
+  <div id="sDepartments"></div>
   <div class="items" id="sItems"></div>
   <div class="acts" id="sActs"></div>
 </div>
@@ -1096,6 +1099,8 @@ function openSheet(b){
   $('sTitle').textContent=b.name;
   $('sSub').innerHTML = CAMP[b.c] + (p&&me?` · 여기서 직선 <b>${fmtM(dist(me,p))}</b>`:'');
   $('sDesc').innerHTML=esc(b.sum)+(b.alias?`<small>다른 이름: ${esc(b.alias)}</small>`:''); $('sDesc').hidden=!(b.sum||b.alias);
+  const departments=buildingDepartments(b.code);
+  $('sDepartments').innerHTML=departments.length?departmentLinks(departments):'';
   renderInfo(b); $('sItems').hidden=false; setPane(detailPane);
   let a=`<button class="pri" data-a="go">➜ 여기로 길찾기</button>`;
   if(adminUnlocked){
@@ -1633,6 +1638,7 @@ loadOSM();
   </form>
   <div id="assistantAnswers" aria-live="polite"></div>
 </dialog>
+<script src="department-sites.js"></script>
 <script src="campus-assistant.js"></script>
 </body>
 </html>
