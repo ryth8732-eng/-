@@ -388,6 +388,14 @@ const R = {
  W17:[['게임소프트웨어전공','','042-630-9270'],['게임그래픽전공','','042-630-9270']],
  W19:[['글로벌철도학과','218호','042-630-4722'],['글로벌호텔관광학과','218호','042-630-9807']]
 };
+// 학교가 공개한 강의실 호실. 과목 배정은 학기와 분반에 따라 바뀐다.
+const classrooms = {
+ W6:[
+   {room:'501호',n:'교양 강의실',url:'https://slas.wsu.ac.kr/board/read.jsp?code=slas0401&id=269463'},
+   {room:'504호',n:'교양 강의실',url:'https://slas.wsu.ac.kr/board/read.jsp?code=slas0401&id=269133'}
+ ],
+ W10:[{room:'103-2호',n:'멀티미디어강의실',url:'https://teaching.wsu.ac.kr/page/index.jsp?code=teaching0206'}]
+};
 /* ===== 건물 소개 · 다른 이름 · 위치 메모 (a=다른 이름, s=소개, m=메모) ===== */
 const INFO = {
  W1:{s:'서캠퍼스 정문으로 들어서면 바로 보이는 도서관. 우송대·우송정보대가 같이 써.',m:['열람실은 3·4·6층. 좌석은 모바일이나 도서관 키오스크로 예약.','도서관 앞 3층 건물 솔파크에 제과제빵 창업실습 빵집이 있어.']},
@@ -472,6 +480,7 @@ function buildInfo(b){
     const hit=list.find(x=>nrm(x.n)===nrm(n)||nrm(x.n).includes(nrm(n))||nrm(n).includes(nrm(x.n)));
     if(hit){ hit.room=room; hit.tel=tel; } else list.push({n,room,tel});
   });
+  list.push(...(classrooms[b.code]||[]));
   (custom[b.code]||[]).forEach((c,i)=>list.push({n:c.n,room:c.room,tel:'',mine:i}));
   b.items=list;
 }
@@ -1633,8 +1642,8 @@ loadOSM();
 </script>
 <dialog id="campusAssistant" aria-labelledby="assistantTitle">
   <header><strong id="assistantTitle">AI 캠퍼스 안내</strong><button type="button" aria-label="닫기" id="assistantClose">×</button></header>
-  <form id="assistantForm"><label for="assistantQuery">건물·시설·운영시간을 물어보세요</label>
-    <div><input id="assistantQuery" required maxlength="200" placeholder="저녁 6시에 밥 먹을 곳 있어?" autocomplete="off"><button>찾기</button></div>
+  <form id="assistantForm"><label for="assistantQuery">강의실·건물·시설·운영시간을 물어보세요</label>
+    <div><input id="assistantQuery" required maxlength="200" placeholder="예: W6 504호 어디야?" autocomplete="off"><button>찾기</button></div>
   </form>
   <div id="assistantAnswers" aria-live="polite"></div>
 </dialog>

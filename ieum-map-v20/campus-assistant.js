@@ -67,10 +67,56 @@
     }
     return list.sort((a,b)=>b.exact-a.exact||b.hours.length-a.hours.length);
   }
+  function addMapActions(article,b,routeLabel){
+      for(const [label,action] of [['지도에서 보기',openSheet],[routeLabel,startGuide]]){
+        if(action===startGuide&&!positionOf(b))continue;
+        const button=document.createElement('button');button.textContent=label;
+        button.onclick=()=>{dialog.close();action(b)};
+        article.append(button);
+      }
+  }
+  function answerRoom(q){
+    const text=q.normalize('NFKC').toUpperCase();
+    const code=text.match(/(?:^|[^A-Z0-9])([WES]\d{1,2})(?!\d)/)?.[1];
+    const remainder=code?text.replace(code,' '):text;
+    const number=remainder.match(/(?:^|[^A-Z0-9])([A-Z]?\d{3,4}(?:-\d+)?)(?:\s*호|(?![A-Z0-9:-]))/)?.[1];
+    const byName=B.filter(b=>clean(q).includes(clean(b.name)));
+    const buildings=code?B.filter(b=>b.code===code):byName.length?byName:B;
+    const classroomQuery=/강의실|강의장|CLASSROOM/.test(text);
+    const roomQuery=/호실|몇\s*호|\d\s*호|ROOM/.test(text);
+    if(!roomQuery&&!classroomQuery&&!(number&&(code||byName.length||remainder.trim()===number)))return false;
+    if(/홈페이지|사이트/.test(q))return false;
+    let count=0;
+    for(const b of buildings){
+      if(/서캠/.test(q)&&b.c!=='W'||/동캠/.test(q)&&b.c!=='E')continue;
+      const named=b.items.filter(x=>clean(x.n)&&clean(q).includes(clean(x.n)));
+      const items=b.items.filter(x=>{
+        if(!x.room)return false;
+        if(number)return x.room.toUpperCase().match(/^([A-Z]?\d{3,4}(?:-\d+)?)(?=호|\s|$)/)?.[1]===number;
+        if(named.length)return named.includes(x);
+        return classroomQuery && /강의실|강의장/.test(x.n);
+      });
+      if(!items.length)continue;
+      const card=document.createElement('article');
+      card.innerHTML='<strong>'+esc(b.code+' '+b.name)+'</strong>';
+      for(const x of items){
+        const floor=floorOf(x.room);
+        card.innerHTML+='<p>'+esc([floor==null?'':floor+'층',x.room,x.n].filter(Boolean).join(' · '))+
+          (x.url?' <a href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer">학교 자료</a>':'')+'</p>';
+      }
+      addMapActions(card,b,'건물까지 길찾기');
+      answers.append(card);count++;
+    }
+    const note=document.createElement('p');
+    note.textContent=count?(count>1?'여러 건물이 일치합니다. 시간표의 건물 번호를 확인하세요.':'지도에 등록된 호실입니다.'):'등록 자료에서 해당 호실을 확인하지 못했습니다. 시간표의 건물 번호와 호실을 확인해 주세요.';
+    answers.prepend(note);
+    return true;
+  }
   $('assistantForm').onsubmit=event=>{
     event.preventDefault();
     const q=$('assistantQuery').value.trim(), rows=find(q),time=requestedTime(q);
     answers.replaceChildren();
+    if(answerRoom(q))return;
     const wantsWebsite=/홈페이지|사이트|학과\s*안내|website/i.test(q);
     const query=departmentKey(q).replace(/홈페이지|사이트|주소|알려줘|바로가기|website/g,'').trim();
     const matched=departmentSites.filter(([name])=>departmentNames(name).some(alias=>
@@ -93,12 +139,7 @@
         const status=time.minute===null?'':dayOK&&inWindow?'안내 시간에 포함 · ':'안내 시간 외 · ';
         article.innerHTML+='<p>'+esc(status+entry[appLang])+' <a target="_blank" rel="noopener noreferrer" href="'+esc(entry.url)+'">학교 안내</a></p>';
       }
-      for(const [label,action] of [['지도에서 보기',openSheet],['길찾기',startGuide]]){
-        if(action===startGuide&&!positionOf(b))continue;
-        const button=document.createElement('button');button.textContent=label;
-        button.onclick=()=>{dialog.close();action(b)};
-        article.append(button);
-      }
+      addMapActions(article,b,'길찾기');
       answers.append(article);
     }
   };
