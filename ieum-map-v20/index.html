@@ -221,6 +221,7 @@
   #assistantAnswers button{border:1px solid #b3c7bd;border-radius:8px;background:white;padding:6px 10px;margin-right:6px}
   .departmentLinks{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.departmentLinks strong{width:100%;font-size:14px}.departmentLinks a{color:#086740;background:#edf6f1;border-radius:8px;padding:7px 9px;font-size:13px;text-decoration:underline}
   .sheet:not([data-pane=info]) #sParking,.sheet:not([data-pane=info]) #sClassrooms,.sheet:not([data-pane=info]) #sDepartments{display:none}
+  .parkingRoute{display:block;width:fit-content;padding:9px 12px;margin:6px 0;background:#08794b;color:white;border-radius:9px;font-weight:650;text-decoration:none}
 </style>
 </head>
 <body>
@@ -492,10 +493,21 @@ const parkingLocations={
  W1:'B3–B1',W5:'B1 · 1F',W13:'B1 · 1F · 2F',S1:'B2',S2:'B3–2F',
  E1:'건물 옆 옥외 주차장'
 };
+// 카카오맵 주차장 장소 ID와 해당 장소의 지도 좌표
+const parkingDestinations={
+ W5:{id:'20585544',name:'보건의료대학 지하주차장',ll:[36.338462,127.445338]},
+ W13:{id:'305771782',name:'우송타워 지하주차장',ll:[36.335237,127.444188]},
+ E1:{id:'291071898',name:'우송대학교 동캠퍼스 주차장',ll:[36.335474,127.452040]}
+};
+function parkingRouteLink(lot){
+  return `<a class="parkingRoute" href="https://map.kakao.com/link/to/${lot.id}" target="_blank" rel="noopener noreferrer">${esc(lot.name)} · 자동차 길찾기 ↗</a>`;
+}
 function parkingLink(code){
   const outside=code==='E1';
   const url=outside?'https://ent.wsu.ac.kr/site/ent/html/page/20201014/info2021.pdf':parkingSource;
-  return '<p>🅿️ '+esc(parkingLocations[code])+' · <a href="'+url+'" target="_blank" rel="noopener noreferrer">'+(outside?'2020년 입학처 주차 안내':'2023년 대학생활 안내')+'</a></p>';
+  const lot=parkingDestinations[code];
+  const route=lot?parkingRouteLink(lot):'<details><summary>이 주차장의 차량 목적지 미확인 · 다른 주차장 선택</summary>'+Object.values(parkingDestinations).map(parkingRouteLink).join('')+'</details>';
+  return '<p>🅿️ '+esc(parkingLocations[code])+' · <a href="'+url+'" target="_blank" rel="noopener noreferrer">'+(outside?'2020년 입학처 주차 안내':'2023년 대학생활 안내')+'</a></p>'+route;
 }
 function parkingSearch(q){
   if(!/주차|차\s*(?:댈|세울)|parking|駐車|停车/i.test(q))return null;
@@ -753,7 +765,8 @@ function drawFac(announce){
   B.forEach(b=>{
     const hit=cats.filter(c=>b.items.some(x=>c.re.test(x.n)));
     if(!hit.length) return;
-    const p=positionOf(b);
+    const parkingOnly=hit.length===1 && hit[0].k==='parking';
+    const p=(parkingOnly && parkingDestinations[b.code]?.ll)||positionOf(b);
     if(!p){ missing++; return; }
     shown++;
     const html=`<div class="fac">${hit.map(c=>`<span title="${c.n}">${c.e}</span>`).join('')}</div>`;
@@ -1154,7 +1167,7 @@ function openSheet(b){
   const departments=buildingDepartments(b.code);
   $('sDepartments').innerHTML=departments.length?departmentLinks(departments):'';
   renderInfo(b); $('sItems').hidden=false; setPane(detailPane);
-  let a=`<button class="pri" data-a="go">➜ 여기로 길찾기</button>`;
+  let a=`<button class="pri" data-a="go">${parkingLocations[b.code]?'➜ 건물까지 길찾기':'➜ 여기로 길찾기'}</button>`;
   if(adminUnlocked){
     a+=`<button data-a="here">📍 현재 GPS 위치로 지정</button>`;
     a+=`<button data-a="move">${pins[b.code]?'📌 위치 오류 수정':'📌 지도에서 위치 지정'}</button>`;
